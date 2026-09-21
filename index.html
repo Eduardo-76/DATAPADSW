@@ -106,6 +106,20 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .inventory-item .item-tools button{font-size:9px;padding:2px 5px;line-height:1}
 .empty-grid{color:var(--muted);font-size:12px;padding:10px 0}
 .grid-help{margin-top:8px;padding:8px 10px;background:#0d2022;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:11px}
+
+.hand-panel{display:flex;flex-direction:column;gap:10px}
+.hand-add{border:1px dashed var(--accent);background:#0d2022;border-radius:9px;padding:14px;display:flex;align-items:center;justify-content:center;gap:10px;color:var(--accent);font-weight:700;min-height:62px}
+.hand-add span{font-size:24px;line-height:1}.hand-add>div{display:flex;flex-direction:column;align-items:flex-start}.hand-add small{font-size:10px;color:var(--muted);font-weight:400;margin-top:2px}
+.hand-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+.hand-item{background:#0d2022;border:1px solid var(--border);border-radius:9px;padding:9px;display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center}
+.hand-item-main{min-width:0}
+.hand-item-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hand-item-meta{font-size:10px;color:var(--muted);margin-top:3px}
+.hand-item-tools{display:flex;gap:4px}
+.hand-item-tools button{min-width:32px;min-height:32px;padding:5px}
+.hand-drop.over{outline:2px solid var(--accent);outline-offset:-2px}
+.hand-empty{color:var(--muted);font-size:11px;text-align:center;padding:4px}
+
 .resource-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .empty{padding:12px 0;color:var(--muted);font-size:12px}
 .modal-bg{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:12px;z-index:9999;overscroll-behavior:contain}
@@ -121,14 +135,23 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
  .new-eq-form{position:static;width:100%;margin-top:7px;display:flex;flex-direction:column}
 
  .grids-list{grid-template-columns:1fr}
- .eq-head,.grid-head{align-items:stretch}
- .eq-name,.grid-name{min-width:0}
- .eq-actions,.grid-actions{flex:0 0 auto}
+ .eq-head{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"drag name" "drag actions";align-items:center;gap:7px 8px}
+ .eq-head .drag{grid-area:drag;align-self:center}
+ .eq-name{grid-area:name;min-width:0;width:100%}
+ .eq-actions{grid-area:actions;display:flex;flex-wrap:wrap;justify-content:flex-start;gap:5px}
+ .grid-head{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name actions";align-items:center;gap:7px}
+ .grid-name{grid-area:name;min-width:0;width:100%}
+ .grid-actions{grid-area:actions;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px}
  .eq-actions button,.grid-actions button,button{min-height:42px}
+ .section-title{align-items:stretch;flex-direction:column}
+ .section-title h2{display:flex;align-items:center}
+ .new-eq-details{flex:1;max-width:100%}
+ .hand-list{grid-template-columns:1fr}
+ .hand-add{min-height:70px}
  .inventory-grid{touch-action:pan-x pan-y}
  .grid-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
  .inventory-item{touch-action:none}
- .grid-cell{width:60px;height:60px}
+ .grid-cell{width:75px;height:75px}
  .modal{max-height:90vh;overflow-y:auto}
 
  .grid2,.hand-grid{grid-template-columns:1fr}.resource-grid{grid-template-columns:1fr 1fr}
@@ -169,9 +192,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 
 <section class="card">
   <div class="section-title"><h2>✋ MÃOS</h2></div>
-  <div class="hand-grid">
-    <div><label>DIREITA</label><input id="rightHand" placeholder="Item equipado"></div>
-    <div><label>ESQUERDA</label><input id="leftHand" placeholder="Item equipado"></div>
+  <div class="hand-panel">
+    <div class="small">Qualquer item pode ser equipado nas mãos, sem grade e sem limite de tamanho.</div>
+    <button class="hand-add hand-drop" id="addHandBtn" type="button"><span>＋</span><div><strong>Adicionar item</strong><small>Toque para escolher ou arraste aqui</small></div></button>
+    <div class="hand-list" id="handsList"></div>
   </div>
 </section>
 
@@ -224,7 +248,7 @@ const STORAGE_KEY="datapad_starwars_v4";
 const RESOURCES=["Créditos","Sucata","Couro","Cabo de aço","Cabo de energia","Célula de energia"];
 
 let state={
- version:4,name:"",date:new Date().toISOString().slice(0,10),rightHand:"",leftHand:"",notes:"",
+ version:5,name:"",date:new Date().toISOString().slice(0,10),hands:[],rightHand:"",leftHand:"",notes:"",
  resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),
  equipment:[
   {id:uid(),name:"Cinto de Trapos",grids:[
@@ -251,6 +275,18 @@ function newGrid(name="Grade",cols=1,rows=1){
 
 function newEquipment(name){
  return {id:uid(),name,grids:[]};
+}
+
+function normalizeHandItem(it){
+ return {
+  id:String(it?.id||uid()),
+  name:String(it?.name||"Item"),
+  quantity:clampInt(it?.quantity||1,1,999),
+  maxStack:clampInt(it?.maxStack||1,1,999),
+  damage:String(it?.damage||""),
+  notes:String(it?.notes||""),
+  side:String(it?.side||"")
+ };
 }
 
 function normalizeItem(it,grid){
@@ -286,10 +322,15 @@ function normalizeGrid(g){
 
 function normalize(data){
  const out={
-  version:4,name:String(data?.name??""),date:String(data?.date??new Date().toISOString().slice(0,10)),
+  version:5,name:String(data?.name??""),date:String(data?.date??new Date().toISOString().slice(0,10)),
+  hands:Array.isArray(data?.hands) ? data.hands.map(h=>normalizeHandItem(h)) : [],
   rightHand:String(data?.rightHand??""),leftHand:String(data?.leftHand??""),notes:String(data?.notes??""),
   resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),equipment:[]
  };
+ if(!out.hands.length){
+  if(String(data?.rightHand||"").trim()) out.hands.push({id:uid(),name:String(data.rightHand).trim(),quantity:1,maxStack:1,damage:"",notes:"",side:"Direita"});
+  if(String(data?.leftHand||"").trim()) out.hands.push({id:uid(),name:String(data.leftHand).trim(),quantity:1,maxStack:1,damage:"",notes:"",side:"Esquerda"});
+ }
  if(data?.resources)RESOURCES.forEach(x=>out.resources[x]=Math.max(0,Number(data.resources[x])||0));
 
  if(Array.isArray(data?.equipment)){
@@ -328,14 +369,93 @@ function save(){
 
 function bindBase(){
  $("charName").value=state.name;$("sheetDate").value=state.date;
- $("rightHand").value=state.rightHand;$("leftHand").value=state.leftHand;$("notes").value=state.notes;
+ $("notes").value=state.notes;
  $("charName").oninput=e=>{state.name=e.target.value;save()};
  $("sheetDate").oninput=e=>{state.date=e.target.value;save()};
- $("rightHand").oninput=e=>{state.rightHand=e.target.value;save()};
- $("leftHand").oninput=e=>{state.leftHand=e.target.value;save()};
  $("notes").oninput=e=>{state.notes=e.target.value;save()};
- renderResources();renderEquipment();
+ renderHands();renderResources();renderEquipment();
 }
+
+function renderHands(){
+ const root=$("handsList");
+ root.innerHTML="";
+ if(!state.hands.length){
+  root.innerHTML='<div class="hand-empty">Nenhum item equipado nas mãos.</div>';
+  return;
+ }
+ state.hands.forEach(it=>{
+  const card=document.createElement("div");
+  card.className="hand-item";
+  const icon=document.createElement("div");
+  icon.textContent="✋";
+  icon.style.fontSize="24px";
+  const main=document.createElement("div");
+  main.className="hand-item-main";
+  const name=document.createElement("div");
+  name.className="hand-item-name";
+  name.textContent=it.name;
+  const meta=document.createElement("div");
+  meta.className="hand-item-meta";
+  const parts=[];
+  if(it.quantity>1 || it.maxStack>1) parts.push(`Qtd. ${it.quantity}/${it.maxStack}`);
+  if(it.side) parts.push(it.side);
+  if(it.damage) parts.push(it.damage);
+  meta.textContent=parts.join(" • ") || "Item equipado livremente";
+  main.append(name,meta);
+  const tools=document.createElement("div");
+  tools.className="hand-item-tools";
+  const edit=button("✎");
+  edit.title="Editar item";
+  edit.onclick=()=>openHandDetailsModal(it);
+  const del=button("×","danger");
+  del.title="Remover das mãos";
+  del.onclick=()=>{ if(confirm(`Remover “${it.name}” das mãos?`)){ state.hands=state.hands.filter(x=>x.id!==it.id); save(); renderHands(); } };
+  tools.append(edit,del);
+  card.append(icon,main,tools);
+  root.appendChild(card);
+ });
+}
+
+function openHandItemModal(existing=null){
+ const it=existing || {name:"",quantity:1,maxStack:1,damage:"",notes:"",side:""};
+ openModal(existing?"Editar item das mãos":"Adicionar item às mãos",`
+  <label>NOME DO ITEM</label>
+  <input id="handName" value="${escapeHtml(it.name)}" placeholder="Ex.: Pistola Blaster">
+
+  <div class="modal-grid" style="margin-top:12px">
+   <div><label>QUANTIDADE</label><input id="handQty" type="number" min="1" max="999" value="${it.quantity}"></div>
+   <div><label>STACK MÁXIMO</label><input id="handStack" type="number" min="1" max="999" value="${it.maxStack}"></div>
+  </div>
+
+  <div class="modal-grid" style="margin-top:12px">
+   <div><label>MÃO / LADO (OPCIONAL)</label><select id="handSide"><option value="">Qualquer</option><option value="Direita">Direita</option><option value="Esquerda">Esquerda</option><option value="Duas mãos">Duas mãos</option></select></div>
+   <div><label>DANO / EFEITO</label><input id="handDamage" value="${escapeHtml(it.damage)}" placeholder="Ex.: 3d6 + 3"></div>
+  </div>
+
+  <label style="margin-top:12px">OBSERVAÇÕES</label>
+  <textarea id="handNotes" rows="3" placeholder="Alcance, propriedades, munição, efeitos...">${escapeHtml(it.notes)}</textarea>
+  <div class="help">As mãos não possuem grade, largura ou altura. Qualquer item pode ser equipado aqui.</div>
+ `,body=>{
+  const name=body.querySelector("#handName").value.trim()||"Item";
+  const quantity=clampInt(body.querySelector("#handQty").value,1,999);
+  const maxStack=clampInt(body.querySelector("#handStack").value,1,999);
+  const side=body.querySelector("#handSide").value;
+  const damage=body.querySelector("#handDamage").value.trim();
+  const notes=body.querySelector("#handNotes").value.trim();
+  if(existing){
+   existing.name=name;existing.quantity=Math.min(quantity,maxStack);existing.maxStack=maxStack;existing.side=side;existing.damage=damage;existing.notes=notes;
+  }else{
+   state.hands.push({id:uid(),name,quantity:Math.min(quantity,maxStack),maxStack,side,damage,notes});
+  }
+  renderHands();
+ });
+ if(existing){
+  // Set select after modal content exists.
+  setTimeout(()=>{const sel=$("handSide");if(sel)sel.value=it.side||"";},0);
+ }
+}
+
+function openHandDetailsModal(it){ openHandItemModal(it); }
 
 function renderResources(){
  const root=$("resources");root.innerHTML="";
@@ -848,6 +968,21 @@ function createEquipmentFromMobile(){
 }
 
 $("createEqBtn").onclick = createEquipmentFromMobile;
+$("addHandBtn").onclick = ()=>openHandItemModal();
+$("addHandBtn").addEventListener("dragover",e=>{ if(draggedItem){ e.preventDefault(); $("addHandBtn").classList.add("over"); } });
+$("addHandBtn").addEventListener("dragleave",()=>$("addHandBtn").classList.remove("over"));
+$("addHandBtn").addEventListener("drop",e=>{
+ e.preventDefault();$("addHandBtn").classList.remove("over");
+ if(!draggedItem)return;
+ const sourceGrid=state.equipment.flatMap(e=>e.grids).find(g=>g.id===draggedItem.gridId);
+ if(!sourceGrid)return;
+ const index=sourceGrid.items.findIndex(i=>i.id===draggedItem.itemId);
+ if(index<0)return;
+ const source=sourceGrid.items[index];
+ state.hands.push({id:uid(),name:source.name,quantity:source.quantity,maxStack:source.maxStack,damage:source.damage,notes:source.notes,side:""});
+ sourceGrid.items.splice(index,1);
+ draggedItem=null;save();renderHands();renderEquipment();
+});
 $("exportBtn").onclick=()=>{
  save();const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
  const url=URL.createObjectURL(blob),a=document.createElement("a");
@@ -863,7 +998,7 @@ $("fileInput").onchange=e=>{
 };
 $("newBtn").onclick=()=>{
  if(!confirm("Criar uma nova ficha? Exporte a ficha atual antes se quiser guardá-la."))return;
- state={version:3,name:"",date:new Date().toISOString().slice(0,10),rightHand:"",leftHand:"",notes:"",resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),equipment:[]};
+ state={version:5,name:"",date:new Date().toISOString().slice(0,10),hands:[],rightHand:"",leftHand:"",notes:"",resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),equipment:[]};
  save();bindBase();
 };
 $("modalBg").onclick=e=>{if(e.target===$("modalBg"))$("modalBg").style.display="none"};

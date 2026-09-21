@@ -40,3 +40,9 @@ Depois disso ele abre em modo de aplicativo, sem depender do visualizador de arq
 Cada jogador terá a própria ficha salva no armazenamento local do dispositivo.
 Use Exportar para gerar um JSON de backup da ficha.
 Use Importar para restaurar uma ficha em outro dispositivo.
+
+## Versão 4
+- Células de inventário de 75×75 px no celular.
+- Cabeçalhos de equipamentos e grades reorganizados para telas pequenas.
+- Seção Mãos redesenhada: qualquer item pode ser equipado sem ocupar uma grade ou possuir limite de tamanho.
+- Itens das mãos podem ser adicionados, editados e removidos.
