@@ -250,7 +250,7 @@ const STORAGE_KEY="datapad_starwars_v4";
 const RESOURCES=["Créditos","Sucata","Couro","Cabo de aço","Cabo de energia","Célula de energia"];
 
 let state={
- version:5,name:"",date:new Date().toISOString().slice(0,10),hands:[],rightHand:"",leftHand:"",notes:"",
+ version:6,name:"",date:new Date().toISOString().slice(0,10),hands:[],rightHand:"",leftHand:"",notes:"",
  resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),
  equipment:[
   {id:uid(),name:"Cinto de Trapos",grids:[
@@ -329,7 +329,7 @@ function normalizeGrid(g){
 
 function normalize(data){
  const out={
-  version:5,name:String(data?.name??""),date:String(data?.date??new Date().toISOString().slice(0,10)),
+  version:6,name:String(data?.name??""),date:String(data?.date??new Date().toISOString().slice(0,10)),
   hands:Array.isArray(data?.hands) ? data.hands.map(h=>normalizeHandItem(h)) : [],
   rightHand:String(data?.rightHand??""),leftHand:String(data?.leftHand??""),notes:String(data?.notes??""),
   resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),equipment:[]
@@ -381,6 +381,8 @@ function bindBase(){
  $("sheetDate").oninput=e=>{state.date=e.target.value;save()};
  $("notes").oninput=e=>{state.notes=e.target.value;save()};
  renderHands();renderResources();renderEquipment();
+
+
 }
 
 function renderHands(){
@@ -445,6 +447,24 @@ function renderHands(){
  });
 }
 
+function moveItemToHands(sourceGrid,it){
+  const hand={
+   id:uid(),
+   name:it.name,
+   quantity:it.quantity||1,
+   maxStack:it.maxStack||1,
+   damage:it.damage||"",
+   notes:it.notes||"",
+   side:it.side||"",
+   w:it.w||1,
+   h:it.h||1,
+   rot:!!it.rot
+  };
+  sourceGrid.items=sourceGrid.items.filter(x=>x.id!==it.id);
+  state.hands.push(hand);
+  return true;
+}
+
 function openHandItemModal(existing=null){
  const it=existing || {name:"",quantity:1,maxStack:1,damage:"",notes:"",side:""};
  openModal(existing?"Editar item das mãos":"Adicionar item às mãos",`
@@ -474,7 +494,7 @@ function openHandItemModal(existing=null){
   if(existing){
    existing.name=name;existing.quantity=Math.min(quantity,maxStack);existing.maxStack=maxStack;existing.side=side;existing.damage=damage;existing.notes=notes;
   }else{
-   state.hands.push({id:uid(),name,quantity:Math.min(quantity,maxStack),maxStack,side,damage,notes});
+   state.hands.push({id:uid(),name,quantity:Math.min(quantity,maxStack),maxStack,side,damage,notes,w:1,h:1,rot:false});
   }
   renderHands();
  });
@@ -615,9 +635,10 @@ function renderGrid(eq,grid){
   }
 
   function moveHandToCell(hand,destGrid,x,y){
-   const w=hand.rot?hand.h:hand.w, h=hand.rot?hand.w:hand.h;
+   const baseW=hand.w||1, baseH=hand.h||1;
+   const w=hand.rot?baseH:baseW, h=hand.rot?baseW:baseH;
    const candidate={
-    id:uid(),name:hand.name,w,h,x,y,rot:!!hand.rot,
+    id:uid(),name:hand.name,w:baseW,h:baseH,x,y,rot:!!hand.rot,
     quantity:hand.quantity,maxStack:hand.maxStack,damage:hand.damage,notes:hand.notes
    };
    if(fits(destGrid,candidate,x,y,candidate.rot)){
@@ -628,7 +649,7 @@ function renderGrid(eq,grid){
    if(fits(destGrid,candidate,x,y,!candidate.rot)){
     candidate.rot=!candidate.rot;
     const rw=candidate.rot?candidate.h:candidate.w, rh=candidate.rot?candidate.w:candidate.h;
-    candidate.x=x;candidate.y=y;candidate.w=candidate.rot?hand.h:hand.w;candidate.h=candidate.rot?hand.w:hand.h;
+    candidate.x=x;candidate.y=y;candidate.w=baseW;candidate.h=baseH;
     destGrid.items.push(candidate);
     state.hands=state.hands.filter(h=>h.id!==hand.id);
     return true;
@@ -1039,7 +1060,20 @@ function createEquipmentFromMobile(){
 }
 
 $("createEqBtn").onclick = createEquipmentFromMobile;
-$("addHandBtn").onclick = ()=>openHandItemModal();
+$("addHandBtn").onclick = ()=>{
+ if(selectedItem){
+  const sourceGrid=state.equipment.flatMap(e=>e.grids).find(g=>g.id===selectedItem.gridId);
+  const it=sourceGrid?.items.find(i=>i.id===selectedItem.itemId);
+  if(it){
+   moveItemToHands(sourceGrid,it);
+   selectedItem=null;
+   save();renderHands();renderEquipment();
+   return;
+  }
+  selectedItem=null;
+ }
+ openHandItemModal();
+};
 $("addHandBtn").addEventListener("dragover",e=>{ if(draggedItem){ e.preventDefault(); $("addHandBtn").classList.add("over"); } });
 $("addHandBtn").addEventListener("dragleave",()=>$("addHandBtn").classList.remove("over"));
 $("addHandBtn").addEventListener("drop",e=>{
@@ -1050,7 +1084,7 @@ $("addHandBtn").addEventListener("drop",e=>{
  const index=sourceGrid.items.findIndex(i=>i.id===draggedItem.itemId);
  if(index<0)return;
  const source=sourceGrid.items[index];
- state.hands.push({id:uid(),name:source.name,quantity:source.quantity,maxStack:source.maxStack,damage:source.damage,notes:source.notes,side:"",w:source.rot?source.h:source.w,h:source.rot?source.w:source.h,rot:false});
+ state.hands.push({id:uid(),name:source.name,quantity:source.quantity,maxStack:source.maxStack,damage:source.damage,notes:source.notes,side:source.side||"",w:source.w||1,h:source.h||1,rot:!!source.rot});
  sourceGrid.items.splice(index,1);
  draggedItem=null;save();renderHands();renderEquipment();
 });
@@ -1069,7 +1103,7 @@ $("fileInput").onchange=e=>{
 };
 $("newBtn").onclick=()=>{
  if(!confirm("Criar uma nova ficha? Exporte a ficha atual antes se quiser guardá-la."))return;
- state={version:5,name:"",date:new Date().toISOString().slice(0,10),hands:[],rightHand:"",leftHand:"",notes:"",resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),equipment:[]};
+ state={version:6,name:"",date:new Date().toISOString().slice(0,10),hands:[],rightHand:"",leftHand:"",notes:"",resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),equipment:[]};
  save();bindBase();
 };
 $("modalBg").onclick=e=>{if(e.target===$("modalBg"))$("modalBg").style.display="none"};
