@@ -8,7 +8,7 @@
 :root{
   --bg:#091517;--panel:#12272a;--panel2:#173438;--cell:#203f42;
   --border:#315f62;--accent:#49d3b4;--text:#eaf7f5;--muted:#9db9b5;
-  --danger:#e97878;--item:#284f52;--grid-size:60px;
+  --danger:#e97878;--item:#284f52;--grid-size:75px;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}
@@ -428,8 +428,8 @@ function renderGrid(eq,grid){
  board.className="inventory-grid";
  board.style.gridTemplateColumns=`repeat(${grid.cols}, var(--grid-size))`;
  board.style.gridTemplateRows=`repeat(${grid.rows}, var(--grid-size))`;
- board.style.width=`${grid.cols*49+8}px`;
- board.style.height=`${grid.rows*49+8}px`;
+ board.style.width=`${grid.cols*75+(grid.cols-1)*3+8}px`;
+ board.style.height=`${grid.rows*75+(grid.rows-1)*3+8}px`;
 
  for(let y=0;y<grid.rows;y++)for(let x=0;x<grid.cols;x++){
   const cell=document.createElement("div");
@@ -501,10 +501,10 @@ function renderGrid(eq,grid){
   el.draggable=true;
 
   const w=it.rot?it.h:it.w,h=it.rot?it.w:it.h;
-  el.style.left=`${4+it.x*49}px`;
-  el.style.top=`${4+it.y*49}px`;
-  el.style.width=`${w*46+Math.max(0,w-1)*3}px`;
-  el.style.height=`${h*46+Math.max(0,h-1)*3}px`;
+  el.style.left=`${4+it.x*(75+3)}px`;
+  el.style.top=`${4+it.y*(75+3)}px`;
+  el.style.width=`${w*75+Math.max(0,w-1)*3}px`;
+  el.style.height=`${h*75+Math.max(0,h-1)*3}px`;
 
   el.innerHTML=`<div class="item-size">${itemSize(it)}${it.maxStack>1 ? ` • ${it.quantity}/${it.maxStack}` : ""}</div>
     <div class="item-name">${escapeHtml(it.name)}</div>`;
