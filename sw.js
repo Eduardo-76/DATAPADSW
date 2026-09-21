@@ -1,4 +1,4 @@
-const CACHE = "datapad-star-wars-v4";
+const CACHE = "datapad-star-wars-v5";
 const ASSETS = [
   "./",
   "./index.html",

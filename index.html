@@ -111,13 +111,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 .hand-add{border:1px dashed var(--accent);background:#0d2022;border-radius:9px;padding:14px;display:flex;align-items:center;justify-content:center;gap:10px;color:var(--accent);font-weight:700;min-height:62px}
 .hand-add span{font-size:24px;line-height:1}.hand-add>div{display:flex;flex-direction:column;align-items:flex-start}.hand-add small{font-size:10px;color:var(--muted);font-weight:400;margin-top:2px}
 .hand-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
-.hand-item{background:#0d2022;border:1px solid var(--border);border-radius:9px;padding:9px;display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center}
+.hand-item{background:#0d2022;cursor:grab;border:1px solid var(--border);border-radius:9px;padding:9px;display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center}
 .hand-item-main{min-width:0}
 .hand-item-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hand-item-meta{font-size:10px;color:var(--muted);margin-top:3px}
 .hand-item-tools{display:flex;gap:4px}
 .hand-item-tools button{min-width:32px;min-height:32px;padding:5px}
 .hand-drop.over{outline:2px solid var(--accent);outline-offset:-2px}
+.hand-item.dragging{opacity:.45}
+.hand-item.selected{outline:2px solid var(--accent);outline-offset:2px}
 .hand-empty{color:var(--muted);font-size:11px;text-align:center;padding:4px}
 
 .resource-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -194,7 +196,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   <div class="section-title"><h2>✋ MÃOS</h2></div>
   <div class="hand-panel">
     <div class="small">Qualquer item pode ser equipado nas mãos, sem grade e sem limite de tamanho.</div>
-    <button class="hand-add hand-drop" id="addHandBtn" type="button"><span>＋</span><div><strong>Adicionar item</strong><small>Toque para escolher ou arraste aqui</small></div></button>
+    <button class="hand-add hand-drop" id="addHandBtn" type="button"><span>＋</span><div><strong>Adicionar item</strong><small>Toque para escolher ou arraste aqui • arraste o item de volta para uma grade</small></div></button>
     <div class="hand-list" id="handsList"></div>
   </div>
 </section>
@@ -261,8 +263,10 @@ let state={
 };
 
 let draggedItem=null;
+let draggedHand=null;
 let draggedEquipment=null;
 let selectedItem=null;
+let selectedHand=null;
 
 function uid(){return "id_"+Math.random().toString(36).slice(2)+Date.now().toString(36)}
 function $(id){return document.getElementById(id)}
@@ -285,7 +289,10 @@ function normalizeHandItem(it){
   maxStack:clampInt(it?.maxStack||1,1,999),
   damage:String(it?.damage||""),
   notes:String(it?.notes||""),
-  side:String(it?.side||"")
+  side:String(it?.side||""),
+  w:clampInt(it?.w||1,1,12),
+  h:clampInt(it?.h||1,1,12),
+  rot:!!it?.rot
  };
 }
 
@@ -386,6 +393,8 @@ function renderHands(){
  state.hands.forEach(it=>{
   const card=document.createElement("div");
   card.className="hand-item";
+  card.draggable=true;
+  card.title="Arraste para uma grade para retirar das mãos";
   const icon=document.createElement("div");
   icon.textContent="✋";
   icon.style.fontSize="24px";
@@ -412,6 +421,26 @@ function renderHands(){
   del.onclick=()=>{ if(confirm(`Remover “${it.name}” das mãos?`)){ state.hands=state.hands.filter(x=>x.id!==it.id); save(); renderHands(); } };
   tools.append(edit,del);
   card.append(icon,main,tools);
+
+  card.addEventListener("click",e=>{
+   if(e.target.closest("button"))return;
+   selectedHand={handId:it.id};
+   selectedItem=null;
+   document.querySelectorAll(".hand-item.selected").forEach(x=>x.classList.remove("selected"));
+   card.classList.add("selected");
+  });
+  card.addEventListener("dragstart",e=>{
+   draggedHand={handId:it.id};
+   selectedHand=null;
+   card.classList.add("dragging");
+   e.dataTransfer.setData("text/plain",it.id);
+  });
+  card.addEventListener("dragend",()=>{
+   draggedHand=null;
+   card.classList.remove("dragging");
+   document.querySelectorAll(".grid-cell.over").forEach(c=>c.classList.remove("over"));
+  });
+
   root.appendChild(card);
  });
 }
@@ -585,8 +614,41 @@ function renderGrid(eq,grid){
    return false;
   }
 
+  function moveHandToCell(hand,destGrid,x,y){
+   const w=hand.rot?hand.h:hand.w, h=hand.rot?hand.w:hand.h;
+   const candidate={
+    id:uid(),name:hand.name,w,h,x,y,rot:!!hand.rot,
+    quantity:hand.quantity,maxStack:hand.maxStack,damage:hand.damage,notes:hand.notes
+   };
+   if(fits(destGrid,candidate,x,y,candidate.rot)){
+    candidate.x=x;candidate.y=y;destGrid.items.push(candidate);
+    state.hands=state.hands.filter(h=>h.id!==hand.id);
+    return true;
+   }
+   if(fits(destGrid,candidate,x,y,!candidate.rot)){
+    candidate.rot=!candidate.rot;
+    const rw=candidate.rot?candidate.h:candidate.w, rh=candidate.rot?candidate.w:candidate.h;
+    candidate.x=x;candidate.y=y;candidate.w=candidate.rot?hand.h:hand.w;candidate.h=candidate.rot?hand.w:hand.h;
+    destGrid.items.push(candidate);
+    state.hands=state.hands.filter(h=>h.id!==hand.id);
+    return true;
+   }
+   return false;
+  }
+
   cell.addEventListener("drop",e=>{
    e.preventDefault();cell.classList.remove("over");
+
+   if(draggedHand){
+    const hand=state.hands.find(h=>h.id===draggedHand.handId);
+    if(!hand)return;
+    const x=Number(cell.dataset.x),y=Number(cell.dataset.y);
+    if(moveHandToCell(hand,grid,x,y)){
+     draggedHand=null;selectedHand=null;save();renderHands();renderEquipment();
+    }else alert("Esse item não cabe nesse espaço.");
+    return;
+   }
+
    if(!draggedItem)return;
    const sourceGrid=state.equipment.flatMap(e=>e.grids).find(g=>g.id===draggedItem.gridId);
    if(!sourceGrid)return;
@@ -600,6 +662,15 @@ function renderGrid(eq,grid){
 
   // Mobile fallback: tap an item to select it, then tap a destination cell.
   cell.addEventListener("click",e=>{
+   if(selectedHand){
+    const hand=state.hands.find(h=>h.id===selectedHand.handId);
+    if(!hand){selectedHand=null;renderHands();return;}
+    const x=Number(cell.dataset.x),y=Number(cell.dataset.y);
+    if(moveHandToCell(hand,grid,x,y)){
+     selectedHand=null;save();renderHands();renderEquipment();
+    }else alert("Esse item não cabe nesse espaço.");
+    return;
+   }
    if(!selectedItem)return;
    const sourceGrid=state.equipment.flatMap(e=>e.grids).find(g=>g.id===selectedItem.gridId);
    if(!sourceGrid)return;
@@ -979,7 +1050,7 @@ $("addHandBtn").addEventListener("drop",e=>{
  const index=sourceGrid.items.findIndex(i=>i.id===draggedItem.itemId);
  if(index<0)return;
  const source=sourceGrid.items[index];
- state.hands.push({id:uid(),name:source.name,quantity:source.quantity,maxStack:source.maxStack,damage:source.damage,notes:source.notes,side:""});
+ state.hands.push({id:uid(),name:source.name,quantity:source.quantity,maxStack:source.maxStack,damage:source.damage,notes:source.notes,side:"",w:source.rot?source.h:source.w,h:source.rot?source.w:source.h,rot:false});
  sourceGrid.items.splice(index,1);
  draggedItem=null;save();renderHands();renderEquipment();
 });
