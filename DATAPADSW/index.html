@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DataPad — Inventário</title>
+<style>
+:root{
+  --bg:#091517;--panel:#12272a;--panel2:#173438;--cell:#203f42;
+  --border:#315f62;--accent:#49d3b4;--text:#eaf7f5;--muted:#9db9b5;
+  --danger:#e97878;--item:#284f52;--grid-size:46px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;min-height:36px;border:1px solid var(--border);background:var(--panel2);color:var(--text);padding:8px 11px;border-radius:8px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#06201b;border-color:var(--accent);font-weight:700}
+button.danger{color:#ffdede;border-color:#7c4141}
+.app{max-width:1120px;margin:auto;padding:18px}
+header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:14px}
+h1{margin:0;color:var(--accent);font-size:25px}
+.sub{color:var(--muted);font-size:12px;margin-top:4px}
+.top-actions,.toolbar,.eq-actions{display:flex;flex-wrap:wrap;gap:7px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
+.grid2,.hand-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;color:var(--muted);font-size:11px;font-weight:700;margin-bottom:5px}
+input,select,textarea{width:100%;background:#0d2022;color:var(--text);border:1px solid var(--border);border-radius:7px;padding:9px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+.section-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:9px}
+.section-title h2{margin:0;color:var(--accent);font-size:14px}
+.small{font-size:11px;color:var(--muted)}
+.status{color:var(--muted);font-size:11px;text-align:right;margin-top:7px}
+.equipment-list{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.equipment{background:#102427;border:1px solid var(--border);border-radius:10px;padding:11px}
+.equipment.dragging{opacity:.45}
+.eq-head{display:flex;align-items:center;gap:8px}
+.drag{cursor:grab;color:var(--muted);font-size:19px;padding:3px 5px}
+.eq-name{flex:1;font-weight:700}
+.eq-actions{display:flex;flex-wrap:wrap;gap:5px}
+.eq-actions button{padding:6px 8px;font-size:11px}
+.new-eq-details{position:relative}
+.new-eq-details summary{
+  list-style:none;cursor:pointer;background:var(--accent);color:#06201b;
+  border:1px solid var(--accent);border-radius:8px;padding:10px 13px;
+  font-weight:700;min-height:36px;user-select:none;-webkit-tap-highlight-color:transparent;
+}
+.new-eq-details summary::-webkit-details-marker{display:none}
+.new-eq-form{
+  position:absolute;right:0;top:calc(100% + 7px);z-index:50;width:min(360px,80vw);
+  display:flex;gap:7px;padding:10px;background:var(--panel);
+  border:1px solid var(--border);border-radius:9px;box-shadow:0 8px 24px #0008;
+}
+.new-eq-form input{flex:1;min-width:0}.new-eq-form button{touch-action:manipulation}
+
+.grids-list{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+  gap:12px;
+  margin-top:10px;
+  align-items:start;
+}
+.grid-section{
+  min-width:0;
+  padding:10px;
+  background:#0d2224;
+  border:1px solid var(--border);
+  border-radius:9px;
+}.grid-head{display:flex;align-items:center;gap:7px}.grid-name{flex:1;font-weight:700}.grid-actions{display:flex;gap:5px;flex-wrap:wrap}.grid-actions button{padding:6px 8px;font-size:11px}.grid-wrap{overflow:auto;margin-top:9px;padding-bottom:3px}
+.inventory-grid{
+  position:relative;
+  display:grid;
+  gap:3px;
+  width:max-content;
+  background:#0c1c1e;
+  padding:4px;
+  border:1px solid var(--border);
+  border-radius:8px;
+}
+.grid-cell{
+  width:var(--grid-size);height:var(--grid-size);
+  background:var(--cell);border:1px solid #31575a;border-radius:4px;
+}
+.grid-cell.over{outline:2px solid var(--accent);outline-offset:-2px}
+.inventory-item{
+  position:absolute;
+  z-index:2;
+  margin:0;
+  padding:5px;
+  border:1px solid var(--accent);
+  border-radius:5px;
+  background:var(--item);
+  color:var(--text);
+  cursor:grab;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  overflow:hidden;
+  box-shadow:0 2px 5px #0006;
+  user-select:none;
+}
+.inventory-item.dragging{opacity:.45}.inventory-item.selected{outline:2px solid var(--accent);outline-offset:2px}
+.inventory-item .item-size{font-size:9px;color:var(--accent);font-weight:bold}
+.inventory-item .item-name{font-size:11px;line-height:1.1;overflow:hidden}
+.inventory-item .item-tools{display:flex;gap:3px;justify-content:flex-end}.inventory-item .item-tools button{min-width:24px;min-height:24px;padding:2px 5px}
+.inventory-item .item-tools button{font-size:9px;padding:2px 5px;line-height:1}
+.empty-grid{color:var(--muted);font-size:12px;padding:10px 0}
+.grid-help{margin-top:8px;padding:8px 10px;background:#0d2022;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:11px}
+.resource-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.empty{padding:12px 0;color:var(--muted);font-size:12px}
+.modal-bg{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:12px;z-index:9999;overscroll-behavior:contain}
+.modal{width:min(540px,100%);max-height:calc(100dvh - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:17px;box-shadow:0 8px 24px #0008}
+.modal h3{margin:0 0 14px;color:var(--accent)}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:15px}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.help{margin-top:10px;padding:10px;background:#0e2022;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:11px;line-height:1.45}
+@media(max-width:700px){
+ .app{padding:10px}
+ .new-eq-details{width:100%}
+ .new-eq-details summary{text-align:center}
+ .new-eq-form{position:static;width:100%;margin-top:7px;display:flex;flex-direction:column}
+
+ .grids-list{grid-template-columns:1fr}
+ .eq-head,.grid-head{align-items:stretch}
+ .eq-name,.grid-name{min-width:0}
+ .eq-actions,.grid-actions{flex:0 0 auto}
+ .eq-actions button,.grid-actions button,button{min-height:42px}
+ .inventory-grid{touch-action:pan-x pan-y}
+ .grid-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+ .inventory-item{touch-action:none}
+ .modal{max-height:90vh;overflow-y:auto}
+
+ .grid2,.hand-grid{grid-template-columns:1fr}.resource-grid{grid-template-columns:1fr 1fr}
+ header{align-items:flex-start;flex-direction:column}.top-actions{width:100%}
+}
+</style>
+
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#091517">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DataPad">
+<link rel="apple-touch-icon" href="./icon-192.png">
+
+</head>
+<body>
+<div class="app">
+<header>
+  <div>
+    <h1>DATAPAD — INVENTÁRIO</h1>
+    <div class="sub">RPG Star Wars • inventário modular • estilo DayZ</div>
+  </div>
+  <div class="top-actions">
+    <button class="primary" id="exportBtn">📤 Exportar</button>
+    <button id="importBtn">📥 Importar</button>
+    <button id="newBtn">🆕 Nova ficha</button>
+  </div>
+</header>
+
+<section class="card">
+  <div class="grid2">
+    <div><label>NOME DO PERSONAGEM</label><input id="charName" placeholder="Ex.: Eduardo"></div>
+    <div><label>DATA DA FICHA</label><input id="sheetDate" type="date"></div>
+  </div>
+  <div class="status" id="saveStatus">Pronto.</div>
+</section>
+
+<section class="card">
+  <div class="section-title"><h2>✋ MÃOS</h2></div>
+  <div class="hand-grid">
+    <div><label>DIREITA</label><input id="rightHand" placeholder="Item equipado"></div>
+    <div><label>ESQUERDA</label><input id="leftHand" placeholder="Item equipado"></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-title">
+    <h2>🎒 EQUIPAMENTOS</h2>
+    <details class="new-eq-details">
+  <summary>＋ Novo equipamento</summary>
+  <div class="new-eq-form">
+    <input id="newEqName" type="text" autocomplete="off" placeholder="Nome do equipamento">
+    <button class="primary" id="createEqBtn" type="button">Criar equipamento</button>
+  </div>
+</details>
+  </div>
+  <div class="small">
+    Agora cada equipamento possui uma <b>grade real</b>. Você escolhe a largura e a altura livremente.
+    Os itens também possuem tamanho e podem ser movimentados dentro da grade.
+  </div>
+  <div class="equipment-list" id="equipmentList"></div>
+</section>
+
+<section class="card">
+  <div class="section-title"><h2>💰 RECURSOS</h2></div>
+  <div class="resource-grid" id="resources"></div>
+</section>
+
+<section class="card">
+  <div class="section-title"><h2>📝 ANOTAÇÕES</h2></div>
+  <textarea id="notes" rows="5" placeholder="Anotações do personagem, projetos descobertos, observações..."></textarea>
+</section>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle">Novo equipamento</h3>
+    <div id="modalBody"></div>
+    <div class="modal-actions">
+      <button id="modalCancel" type="button">Cancelar</button>
+      <button class="primary" id="modalSave" type="button">Salvar</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="fileInput" accept=".json,application/json" hidden>
+
+<script>
+(() => {
+"use strict";
+
+const STORAGE_KEY="datapad_starwars_v4";
+const RESOURCES=["Créditos","Sucata","Couro","Cabo de aço","Cabo de energia","Célula de energia"];
+
+let state={
+ version:4,name:"",date:new Date().toISOString().slice(0,10),rightHand:"",leftHand:"",notes:"",
+ resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),
+ equipment:[
+  {id:uid(),name:"Cinto de Trapos",grids:[
+    {id:uid(),name:"Cinto",cols:4,rows:1,items:[]}
+  ]},
+  {id:uid(),name:"Calça de Trapos",grids:[
+    {id:uid(),name:"Bolsos",cols:4,rows:2,items:[]}
+  ]}
+ ]
+};
+
+let draggedItem=null;
+let draggedEquipment=null;
+let selectedItem=null;
+
+function uid(){return "id_"+Math.random().toString(36).slice(2)+Date.now().toString(36)}
+function $(id){return document.getElementById(id)}
+function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]) )}
+function clampInt(v,min,max){return Math.max(min,Math.min(max,parseInt(v,10)||min))}
+
+function newGrid(name="Grade",cols=1,rows=1){
+ return {id:uid(),name,cols:clampInt(cols,1,12),rows:clampInt(rows,1,12),items:[]};
+}
+
+function newEquipment(name){
+ return {id:uid(),name,grids:[]};
+}
+
+function normalizeItem(it,grid){
+ const w=clampInt(it?.w||1,1,grid.cols),h=clampInt(it?.h||1,1,grid.rows);
+ const maxStack=clampInt(it?.maxStack||1,1,999);
+ return {
+  id:String(it?.id||uid()),name:String(it?.name||"Item"),
+  w,h,x:clampInt(it?.x||0,0,grid.cols-1),y:clampInt(it?.y||0,0,grid.rows-1),
+  rot:!!it?.rot,
+  quantity:clampInt(it?.quantity||1,1,maxStack),
+  maxStack,
+  damage:String(it?.damage||""),
+  notes:String(it?.notes||"")
+ };
+}
+
+function normalizeGrid(g){
+ const grid={
+  id:String(g?.id||uid()),
+  name:String(g?.name||"Grade"),
+  cols:clampInt(g?.cols||g?.width||1,1,12),
+  rows:clampInt(g?.rows||g?.height||1,1,12),
+  items:[]
+ };
+ if(Array.isArray(g?.items)){
+  grid.items=g.items.map(it=>normalizeItem(it,grid)).filter(it=>{
+   const w=it.rot?it.h:it.w,h=it.rot?it.w:it.h;
+   return it.x+w<=grid.cols && it.y+h<=grid.rows;
+  });
+ }
+ return grid;
+}
+
+function normalize(data){
+ const out={
+  version:4,name:String(data?.name??""),date:String(data?.date??new Date().toISOString().slice(0,10)),
+  rightHand:String(data?.rightHand??""),leftHand:String(data?.leftHand??""),notes:String(data?.notes??""),
+  resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),equipment:[]
+ };
+ if(data?.resources)RESOURCES.forEach(x=>out.resources[x]=Math.max(0,Number(data.resources[x])||0));
+
+ if(Array.isArray(data?.equipment)){
+  out.equipment=data.equipment.map(eq=>{
+   let grids=[];
+   if(Array.isArray(eq?.grids)){
+    grids=eq.grids.map(normalizeGrid);
+   }else{
+    // Migration from v3: the old single grid becomes the first grid.
+    const legacyGrid=newGrid(
+      "Grade principal",
+      eq?.cols||eq?.width||1,
+      eq?.rows||eq?.height||1
+    );
+    if(Array.isArray(eq?.items))legacyGrid.items=eq.items.map(it=>normalizeItem(it,legacyGrid));
+    grids=[legacyGrid];
+   }
+   return {id:String(eq?.id||uid()),name:String(eq?.name||"Equipamento"),grids};
+  });
+ }
+ return out;
+}
+
+function load(){
+ try{
+  const raw=localStorage.getItem(STORAGE_KEY);
+  if(raw)state=normalize(JSON.parse(raw));
+ }catch(e){}
+}
+function save(){
+ try{
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+  $("saveStatus").textContent="✓ Salvo automaticamente • "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+ }catch(e){$("saveStatus").textContent="⚠ Não foi possível salvar localmente."}
+}
+
+function bindBase(){
+ $("charName").value=state.name;$("sheetDate").value=state.date;
+ $("rightHand").value=state.rightHand;$("leftHand").value=state.leftHand;$("notes").value=state.notes;
+ $("charName").oninput=e=>{state.name=e.target.value;save()};
+ $("sheetDate").oninput=e=>{state.date=e.target.value;save()};
+ $("rightHand").oninput=e=>{state.rightHand=e.target.value;save()};
+ $("leftHand").oninput=e=>{state.leftHand=e.target.value;save()};
+ $("notes").oninput=e=>{state.notes=e.target.value;save()};
+ renderResources();renderEquipment();
+}
+
+function renderResources(){
+ const root=$("resources");root.innerHTML="";
+ RESOURCES.forEach(name=>{
+  const d=document.createElement("div"),lab=document.createElement("label"),inp=document.createElement("input");
+  lab.textContent=name.toUpperCase();inp.type="number";inp.min="0";inp.step="1";inp.value=state.resources[name]||0;
+  inp.oninput=()=>{state.resources[name]=Math.max(0,Number(inp.value)||0);save()};
+  d.append(lab,inp);root.appendChild(d);
+ });
+}
+
+function itemSize(it){return it.rot?`${it.h}×${it.w}`:`${it.w}×${it.h}`}
+function cellsOccupied(eq,x,y,w,h,ignoreId=null){
+ return eq.items.some(it=>{
+  if(it.id===ignoreId)return false;
+  const iw=it.rot?it.h:it.w,ih=it.rot?it.w:it.h;
+  return x<it.x+iw&&x+ w>it.x&&y<it.y+ih&&y+h>it.y;
+ });
+}
+function fits(eq,it,x,y,rot=it.rot){
+ const w=rot?it.h:it.w,h=rot?it.w:it.h;
+ return x>=0&&y>=0&&x+w<=eq.cols&&y+h<=eq.rows&&!cellsOccupied(eq,x,y,w,h,it.id);
+}
+
+function itemSize(it){return it.rot?`${it.h}×${it.w}`:`${it.w}×${it.h}`}
+
+function cellsOccupied(grid,x,y,w,h,ignoreId=null){
+ return grid.items.some(it=>{
+  if(it.id===ignoreId)return false;
+  const iw=it.rot?it.h:it.w,ih=it.rot?it.w:it.h;
+  return x<it.x+iw&&x+w>it.x&&y<it.y+ih&&y+h>it.y;
+ });
+}
+
+function fits(grid,it,x,y,rot=it.rot){
+ const w=rot?it.h:it.w,h=rot?it.w:it.h;
+ return x>=0&&y>=0&&x+w<=grid.cols&&y+h<=grid.rows&&!cellsOccupied(grid,x,y,w,h,it.id);
+}
+
+function renderGrid(eq,grid){
+ const section=document.createElement("div");
+ section.className="grid-section";
+
+ const gridHead=document.createElement("div");
+ gridHead.className="grid-head";
+
+ const gridName=document.createElement("input");
+ gridName.className="grid-name";
+ gridName.value=grid.name;
+ gridName.title="Nome da grade";
+ gridName.oninput=()=>{grid.name=gridName.value;save()};
+
+ const gridActions=document.createElement("div");
+ gridActions.className="grid-actions";
+
+ const addItem=button("＋ Item","primary");
+ addItem.onclick=()=>openItemModal(eq,grid);
+
+ const resize=button("▦ Tamanho");
+ resize.onclick=()=>openGridModal(eq,grid);
+
+ const del=button("🗑️","danger");
+ del.title="Remover esta grade";
+ del.onclick=()=>{
+  if(eq.grids.length===1){
+   if(confirm("Esta é a única grade. Remover a grade deixará o equipamento vazio. Continuar?")){
+    eq.grids=[];
+    save();renderEquipment();
+   }
+  }else if(confirm("Remover esta grade e os itens que estão nela?")){
+   eq.grids=eq.grids.filter(g=>g.id!==grid.id);
+   save();renderEquipment();
+  }
+ };
+
+ gridActions.append(addItem,resize,del);
+ gridHead.append(gridName,gridActions);
+ section.appendChild(gridHead);
+
+ const info=document.createElement("div");
+ info.className="small";
+ info.style.marginTop="5px";
+ info.textContent=`Grade ${grid.cols}×${grid.rows} • ${grid.items.length} item(ns)`;
+ section.appendChild(info);
+
+ const wrap=document.createElement("div");
+ wrap.className="grid-wrap";
+
+ const board=document.createElement("div");
+ board.className="inventory-grid";
+ board.style.gridTemplateColumns=`repeat(${grid.cols}, var(--grid-size))`;
+ board.style.gridTemplateRows=`repeat(${grid.rows}, var(--grid-size))`;
+ board.style.width=`${grid.cols*49+8}px`;
+ board.style.height=`${grid.rows*49+8}px`;
+
+ for(let y=0;y<grid.rows;y++)for(let x=0;x<grid.cols;x++){
+  const cell=document.createElement("div");
+  cell.className="grid-cell";
+  cell.dataset.x=x;cell.dataset.y=y;
+
+  cell.addEventListener("dragover",e=>{
+   e.preventDefault();cell.classList.add("over");
+  });
+  cell.addEventListener("dragleave",()=>cell.classList.remove("over"));
+  function moveItemToCell(sourceGrid,it,destGrid,x,y){
+   const originalX=it.x,originalY=it.y,originalRot=it.rot;
+   const sameGrid=sourceGrid.id===destGrid.id;
+
+   if(sameGrid){
+    if(fits(destGrid,it,x,y,it.rot)){it.x=x;it.y=y;return true;}
+    if(fits(destGrid,it,x,y,!it.rot)){it.rot=!it.rot;it.x=x;it.y=y;return true;}
+    return false;
+   }
+
+   const index=sourceGrid.items.indexOf(it);
+   sourceGrid.items.splice(index,1);
+
+   if(fits(destGrid,it,x,y,it.rot)){
+    it.x=x;it.y=y;destGrid.items.push(it);return true;
+   }
+   if(fits(destGrid,it,x,y,!it.rot)){
+    it.rot=!it.rot;it.x=x;it.y=y;destGrid.items.push(it);return true;
+   }
+
+   sourceGrid.items.splice(index,0,it);
+   it.x=originalX;it.y=originalY;it.rot=originalRot;
+   return false;
+  }
+
+  cell.addEventListener("drop",e=>{
+   e.preventDefault();cell.classList.remove("over");
+   if(!draggedItem)return;
+   const sourceGrid=state.equipment.flatMap(e=>e.grids).find(g=>g.id===draggedItem.gridId);
+   if(!sourceGrid)return;
+   const it=sourceGrid.items.find(i=>i.id===draggedItem.itemId);
+   if(!it)return;
+   const x=Number(cell.dataset.x),y=Number(cell.dataset.y);
+   if(moveItemToCell(sourceGrid,it,grid,x,y)){
+    selectedItem=null;save();renderEquipment();
+   }else alert("Esse item não cabe nesse espaço.");
+  });
+
+  // Mobile fallback: tap an item to select it, then tap a destination cell.
+  cell.addEventListener("click",e=>{
+   if(!selectedItem)return;
+   const sourceGrid=state.equipment.flatMap(e=>e.grids).find(g=>g.id===selectedItem.gridId);
+   if(!sourceGrid)return;
+   const it=sourceGrid.items.find(i=>i.id===selectedItem.itemId);
+   if(!it){selectedItem=null;renderEquipment();return;}
+   const x=Number(cell.dataset.x),y=Number(cell.dataset.y);
+   if(moveItemToCell(sourceGrid,it,grid,x,y)){
+    selectedItem=null;save();renderEquipment();
+   }else{
+    alert("Esse item não cabe nesse espaço.");
+   }
+  });
+  board.appendChild(cell);
+ }
+
+ grid.items.forEach(it=>{
+  const el=document.createElement("div");
+  el.className="inventory-item";
+  el.draggable=true;
+
+  const w=it.rot?it.h:it.w,h=it.rot?it.w:it.h;
+  el.style.left=`${4+it.x*49}px`;
+  el.style.top=`${4+it.y*49}px`;
+  el.style.width=`${w*46+Math.max(0,w-1)*3}px`;
+  el.style.height=`${h*46+Math.max(0,h-1)*3}px`;
+
+  el.innerHTML=`<div class="item-size">${itemSize(it)}${it.maxStack>1 ? ` • ${it.quantity}/${it.maxStack}` : ""}</div>
+    <div class="item-name">${escapeHtml(it.name)}</div>`;
+
+  const tools=document.createElement("div");
+  tools.className="item-tools";
+
+  // Explicit edit button: works reliably on mobile where double-click is not
+  // a dependable gesture.
+  const editItem=button("✎");
+  editItem.title="Editar item";
+  editItem.setAttribute("aria-label","Editar item");
+  editItem.onclick=e=>{
+   e.stopPropagation();
+   selectedItem=null;
+   openItemDetailsModal(eq,grid,it);
+  };
+
+  const rotate=button("↻");
+  rotate.title="Girar";
+  rotate.onclick=e=>{
+   e.stopPropagation();
+   if(fits(grid,it,it.x,it.y,!it.rot)){
+    it.rot=!it.rot;save();renderEquipment();
+   }else alert("Não cabe girado aqui.");
+  };
+
+  const remove=button("×","danger");
+  remove.onclick=e=>{
+   e.stopPropagation();
+   if(confirm("Remover “"+it.name+"”?")){
+    grid.items=grid.items.filter(x=>x.id!==it.id);
+    save();renderEquipment();
+   }
+  };
+
+  tools.append(editItem,rotate,remove);
+  el.appendChild(tools);
+
+  el.addEventListener("click",e=>{
+   e.stopPropagation();
+   selectedItem={gridId:grid.id,itemId:it.id};
+   document.querySelectorAll(".inventory-item.selected").forEach(x=>x.classList.remove("selected"));
+   el.classList.add("selected");
+  });
+
+  el.addEventListener("dblclick",e=>{
+   e.stopPropagation();
+   selectedItem=null;
+   openItemDetailsModal(eq,grid,it);
+  });
+
+  el.addEventListener("dragstart",e=>{
+   draggedItem={gridId:grid.id,itemId:it.id};
+   el.classList.add("dragging");
+   e.dataTransfer.setData("text/plain",it.id);
+  });
+  el.addEventListener("dragend",()=>{
+   draggedItem=null;
+   document.querySelectorAll(".grid-cell.over").forEach(c=>c.classList.remove("over"));
+   el.classList.remove("dragging");
+  });
+
+  board.appendChild(el);
+ });
+
+ wrap.appendChild(board);
+ section.appendChild(wrap);
+
+ const help=document.createElement("div");
+ help.className="grid-help";
+ help.textContent="PC: arraste os itens. Celular: toque no item e depois no destino. Use ✎ para editar e ↻ para girar.";
+ section.appendChild(help);
+
+ return section;
+}
+
+function renderEquipment(){
+ const list=$("equipmentList");
+ list.innerHTML="";
+
+ if(!state.equipment.length){
+  list.innerHTML='<div class="empty">Nenhum equipamento. Clique em “＋ Novo equipamento”.</div>';
+  return;
+ }
+
+ state.equipment.forEach(eq=>{
+  const card=document.createElement("div");
+  card.className="equipment";
+  card.draggable=true;
+  card.dataset.id=eq.id;
+
+  const head=document.createElement("div");
+  head.className="eq-head";
+
+  const handle=document.createElement("span");
+  handle.className="drag";
+  handle.textContent="☷";
+  handle.title="Arraste para reorganizar equipamentos";
+
+  const name=document.createElement("input");
+  name.className="eq-name";
+  name.value=eq.name;
+  name.oninput=()=>{eq.name=name.value;save()};
+
+  const actions=document.createElement("div");
+  actions.className="eq-actions";
+
+  const addGrid=button("＋ Grade","primary");
+  addGrid.onclick=()=>openGridModal(eq,null);
+
+  const edit=button("✏️ Editar");
+  edit.onclick=()=>openEquipmentModal(eq);
+
+  const del=button("🗑️","danger");
+  del.onclick=()=>{
+   if(confirm("Remover “"+eq.name+"” e todas as suas grades/itens?")){
+    state.equipment=state.equipment.filter(x=>x.id!==eq.id);
+    save();renderEquipment();
+   }
+  };
+
+  actions.append(addGrid,edit,del);
+  head.append(handle,name,actions);
+  card.appendChild(head);
+
+  const info=document.createElement("div");
+  info.className="small";
+  info.style.marginTop="7px";
+  info.textContent=`${eq.grids.length} grade(s)`;
+  card.appendChild(info);
+
+  if(!eq.grids.length){
+   const empty=document.createElement("div");
+   empty.className="empty";
+   empty.textContent="Nenhuma grade. Clique em “＋ Grade” para criar os compartimentos deste equipamento.";
+   card.appendChild(empty);
+  }else{
+   const grids=document.createElement("div");
+   grids.className="grids-list";
+   eq.grids.forEach(grid=>grids.appendChild(renderGrid(eq,grid)));
+   card.appendChild(grids);
+  }
+
+  card.addEventListener("dragstart",()=>{
+   if(draggedItem)return;
+   draggedEquipment=eq.id;
+   card.classList.add("dragging");
+  });
+  card.addEventListener("dragend",()=>{
+   draggedEquipment=null;card.classList.remove("dragging");
+  });
+  card.addEventListener("dragover",e=>{if(!draggedItem)e.preventDefault()});
+  card.addEventListener("drop",e=>{
+   if(draggedItem)return;
+   e.preventDefault();
+   if(!draggedEquipment||draggedEquipment===eq.id)return;
+   const from=state.equipment.findIndex(x=>x.id===draggedEquipment);
+   const to=state.equipment.findIndex(x=>x.id===eq.id);
+   if(from<0||to<0)return;
+   const [m]=state.equipment.splice(from,1);
+   state.equipment.splice(to,0,m);
+   save();renderEquipment();
+  });
+
+  list.appendChild(card);
+ });
+}
+
+function button(text,kind=""){
+ const b=document.createElement("button");b.type="button";b.textContent=text;if(kind)b.classList.add(kind);return b;
+}
+
+function openModal(title,html,onSave){
+ $("modalTitle").textContent=title;$("modalBody").innerHTML=html;$("modalBg").style.display="flex";
+ $("modalCancel").onclick=()=>$("modalBg").style.display="none";
+ $("modalSave").onclick=()=>{onSave($("modalBody"));$("modalBg").style.display="none";save();renderEquipment()};
+ const first=$("modalBody").querySelector("input,select");if(first)setTimeout(()=>first.focus(),20);
+}
+
+function openEquipmentModal(eq=null){
+  // On mobile/local HTML, use the native browser dialog for maximum compatibility.
+  // Editing an existing equipment still uses the same simple dialog.
+  const current = eq ? eq.name : "";
+  const name = window.prompt(
+    eq ? "Nome do equipamento:" : "Nome do novo equipamento:",
+    current
+  );
+
+  if(name === null) return;
+
+  const clean = name.trim();
+  if(!clean){
+    alert("Digite um nome para o equipamento.");
+    return;
+  }
+
+  if(eq){
+    eq.name = clean;
+  }else{
+    state.equipment.push(newEquipment(clean));
+  }
+
+  save();
+  renderEquipment();
+}
+
+function openGridModal(eq,grid=null){
+ openModal(grid?"Editar grade":"Nova grade",`
+  <label>NOME DA GRADE / COMPARTIMENTO</label>
+  <input id="gridName" value="${escapeHtml(grid?grid.name:"")}" placeholder="Ex.: Compartimento principal">
+  <div class="modal-grid" style="margin-top:12px">
+   <div><label>LARGURA (COLUNAS)</label><input id="gridCols" type="number" min="1" max="12" value="${grid?grid.cols:4}"></div>
+   <div><label>ALTURA (LINHAS)</label><input id="gridRows" type="number" min="1" max="12" value="${grid?grid.rows:4}"></div>
+  </div>
+  <div class="help">
+   A grade é totalmente livre. Exemplos: 4×4 para uma mochila, 3×2 para uma bolsa,
+   2×1 para um bolso ou 1×1 para um compartimento pequeno.
+  </div>
+ `,body=>{
+  const name=body.querySelector("#gridName").value.trim()||"Grade";
+  const cols=clampInt(body.querySelector("#gridCols").value,1,12);
+  const rows=clampInt(body.querySelector("#gridRows").value,1,12);
+
+  if(grid){
+   const invalid=grid.items.filter(it=>{
+    const w=it.rot?it.h:it.w,h=it.rot?it.w:it.h;
+    return it.x+w>cols||it.y+h>rows;
+   });
+   if(invalid.length){
+    alert("A nova grade é menor que alguns itens. A grade não foi alterada.");
+    return;
+   }
+   grid.name=name;grid.cols=cols;grid.rows=rows;
+  }else{
+   eq.grids.push(newGrid(name,cols,rows));
+  }
+ });
+
+}
+
+function openItemModal(eq,grid){
+ openModal("Novo item",`
+  <label>NOME DO ITEM</label>
+  <input id="itemName" placeholder="Ex.: Pistola Blaster">
+
+  <div class="modal-grid" style="margin-top:12px">
+   <div><label>LARGURA</label><input id="itemW" type="number" min="1" max="${grid.cols}" value="1"></div>
+   <div><label>ALTURA</label><input id="itemH" type="number" min="1" max="${grid.rows}" value="1"></div>
+  </div>
+
+  <div class="modal-grid" style="margin-top:12px">
+   <div><label>STACK MÁXIMO</label><input id="itemStack" type="number" min="1" max="999" value="1"></div>
+   <div><label>DANO / EFEITO</label><input id="itemDamage" placeholder="Ex.: 3d6 + 3"></div>
+  </div>
+
+  <label style="margin-top:12px">OBSERVAÇÕES</label>
+  <textarea id="itemNotes" rows="3" placeholder="Alcance, propriedades, munição, efeitos..."></textarea>
+
+  <div class="help">Exemplo: Célula de energia → Stack máximo 2. Blaster → Dano 3d6 + 3. Essas informações ficam salvas no próprio item.</div>
+ `,body=>{
+  const name=body.querySelector("#itemName").value.trim()||"Novo item";
+  const w=clampInt(body.querySelector("#itemW").value,1,grid.cols);
+  const h=clampInt(body.querySelector("#itemH").value,1,grid.rows);
+  const maxStack=clampInt(body.querySelector("#itemStack").value,1,999);
+  const damage=body.querySelector("#itemDamage").value.trim();
+  const notes=body.querySelector("#itemNotes").value.trim();
+
+  let placed=null;
+  for(let y=0;y<=grid.rows-h&&!placed;y++){
+   for(let x=0;x<=grid.cols-w&&!placed;x++){
+    const temp={id:"temp",w,h,x,y,rot:false};
+    if(fits(grid,temp,x,y,false))placed={
+      id:uid(),name,w,h,x,y,rot:false,quantity:1,maxStack,damage,notes
+    };
+   }
+  }
+  if(!placed){
+   alert("Não existe espaço livre suficiente nesta grade para esse item.");
+   return;
+  }
+  grid.items.push(placed);
+ });
+}
+
+function openItemDetailsModal(eq,grid,it){
+ openModal("Detalhes do item",`
+  <label>NOME DO ITEM</label>
+  <input id="detailName" value="${escapeHtml(it.name)}">
+
+  <div class="modal-grid" style="margin-top:12px">
+   <div>
+    <label>QUANTIDADE</label>
+    <input id="detailQty" type="number" min="1" max="${it.maxStack}" value="${it.quantity}">
+   </div>
+   <div>
+    <label>STACK MÁXIMO</label>
+    <input id="detailStack" type="number" min="1" max="999" value="${it.maxStack}">
+   </div>
+  </div>
+
+  <label style="margin-top:12px">DANO / EFEITO</label>
+  <input id="detailDamage" value="${escapeHtml(it.damage)}" placeholder="Ex.: 3d6 + 3">
+
+  <label style="margin-top:12px">OBSERVAÇÕES</label>
+  <textarea id="detailNotes" rows="4" placeholder="Alcance, propriedades, munição, efeitos...">${escapeHtml(it.notes)}</textarea>
+
+  <div class="help">
+   Exemplo de Célula de Energia: <b>Quantidade 2 / Stack máximo 2</b>.<br>
+   Exemplo de Blaster: <b>Dano 3d6 + 3</b> e observações como alcance ou necessidade de célula.
+  </div>
+ `,body=>{
+  it.name=body.querySelector("#detailName").value.trim()||"Item";
+  it.maxStack=clampInt(body.querySelector("#detailStack").value,1,999);
+  it.quantity=clampInt(body.querySelector("#detailQty").value,1,it.maxStack);
+  it.damage=body.querySelector("#detailDamage").value.trim();
+  it.notes=body.querySelector("#detailNotes").value.trim();
+ });
+}
+
+function createEquipmentFromMobile(){
+  const input = $("newEqName");
+  if(!input) return;
+  const name = input.value.trim();
+
+  if(!name){
+    input.focus();
+    return;
+  }
+
+  state.equipment.push(newEquipment(name));
+  input.value = "";
+
+  // Render first, then save. This keeps the visible UI updated even if
+  // localStorage is unavailable in a particular local-file context.
+  renderEquipment();
+  try { save(); } catch(err) { console.warn("Falha ao salvar localmente:", err); }
+
+  const details = input.closest("details");
+  if(details) details.open = false;
+}
+
+$("createEqBtn").onclick = createEquipmentFromMobile;
+$("exportBtn").onclick=()=>{
+ save();const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=(state.name.trim()||"Personagem")+"_DataPad.json";document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),500);
+};
+$("importBtn").onclick=()=>$("fileInput").click();
+$("fileInput").onchange=e=>{
+ const file=e.target.files[0];if(!file)return;
+ const reader=new FileReader();
+ reader.onload=()=>{try{state=normalize(JSON.parse(reader.result));save();bindBase();alert("✓ Ficha importada com sucesso.")}catch(err){alert("Arquivo de ficha inválido.")}e.target.value=""};
+ reader.readAsText(file);
+};
+$("newBtn").onclick=()=>{
+ if(!confirm("Criar uma nova ficha? Exporte a ficha atual antes se quiser guardá-la."))return;
+ state={version:3,name:"",date:new Date().toISOString().slice(0,10),rightHand:"",leftHand:"",notes:"",resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),equipment:[]};
+ save();bindBase();
+};
+$("modalBg").onclick=e=>{if(e.target===$("modalBg"))$("modalBg").style.display="none"};
+
+load();bindBase();save();
+})();
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+</script>
+
+</body>
+</html>
