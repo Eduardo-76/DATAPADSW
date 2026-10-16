@@ -23,7 +23,14 @@ h1{margin:0;color:var(--accent);font-size:25px}
 .sub{color:var(--muted);font-size:12px;margin-top:4px}
 .top-actions,.toolbar,.eq-actions{display:flex;flex-wrap:wrap;gap:7px}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
-.grid2,.hand-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hand-items{display:flex;flex-direction:column;gap:8px}
+.hand-add{width:100%;border:1px dashed var(--accent);background:#0d2022;color:var(--accent);font-weight:700}
+.hand-item{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px;border:1px solid var(--border);border-radius:8px;background:#0d2022}
+.hand-item-main{flex:1;min-width:120px}
+.hand-item-name{font-weight:700}
+.hand-item-meta{font-size:11px;color:var(--muted);margin-top:3px}
+.hand-item-actions{display:flex;gap:5px;flex-wrap:wrap}
 label{display:block;color:var(--muted);font-size:11px;font-weight:700;margin-bottom:5px}
 input,select,textarea{width:100%;background:#0d2022;color:var(--text);border:1px solid var(--border);border-radius:7px;padding:9px;outline:none}
 input:focus,select:focus,textarea:focus{border-color:var(--accent)}
@@ -130,7 +137,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
  .inventory-item{touch-action:none}
  .modal{max-height:90vh;overflow-y:auto}
 
- .grid2,.hand-grid{grid-template-columns:1fr}.resource-grid{grid-template-columns:1fr 1fr}
+ .grid2{grid-template-columns:1fr}.resource-grid{grid-template-columns:1fr 1fr}
  header{align-items:flex-start;flex-direction:column}.top-actions{width:100%}
 }
 </style>
@@ -158,11 +165,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 </section>
 
 <section class="card">
-  <div class="section-title"><h2>✋ MÃOS</h2></div>
-  <div class="hand-grid">
-    <div><label>DIREITA</label><input id="rightHand" placeholder="Item equipado"></div>
-    <div><label>ESQUERDA</label><input id="leftHand" placeholder="Item equipado"></div>
-  </div>
+  <div class="section-title"><h2>✋ MÃOS</h2><button class="primary" id="addHandItem">＋ Adicionar item</button></div>
+  <div class="small" style="margin-bottom:9px">Qualquer item pode ser equipado aqui, sem grade e sem limite de tamanho.</div>
+  <div class="hand-items" id="handItems"></div>
 </section>
 
 <section class="card">
@@ -214,7 +219,7 @@ const STORAGE_KEY="datapad_starwars_v4";
 const RESOURCES=["Créditos","Sucata","Couro","Cabo de aço","Cabo de energia","Célula de energia"];
 
 let state={
- version:4,name:"",date:new Date().toISOString().slice(0,10),rightHand:"",leftHand:"",notes:"",
+ version:5,name:"",date:new Date().toISOString().slice(0,10),handItems:[],rightHand:"",leftHand:"",notes:"",
  resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),
  equipment:[
   {id:uid(),name:"Cinto de Trapos",grids:[
@@ -274,10 +279,13 @@ function normalizeGrid(g){
  return grid;
 }
 
+function normalizeHandItem(it){return {id:String(it?.id||uid()),name:String(it?.name||"Item"),w:clampInt(it?.w||1,1,99),h:clampInt(it?.h||1,1,99),rot:!!it?.rot,quantity:clampInt(it?.quantity||1,1,999),maxStack:clampInt(it?.maxStack||1,1,999),damage:String(it?.damage||""),notes:String(it?.notes||""),hand:String(it?.hand||"Livre")};}
+function legacyHandItems(data){const out=[];for(const [hand,key] of [["Direita","rightHand"],["Esquerda","leftHand"]]){const name=String(data?.[key]||"").trim();if(name)out.push(normalizeHandItem({name,hand}));}return out;}
+
 function normalize(data){
  const out={
-  version:4,name:String(data?.name??""),date:String(data?.date??new Date().toISOString().slice(0,10)),
-  rightHand:String(data?.rightHand??""),leftHand:String(data?.leftHand??""),notes:String(data?.notes??""),
+  version:5,name:String(data?.name??""),date:String(data?.date??new Date().toISOString().slice(0,10)),
+  handItems:Array.isArray(data?.handItems)?data.handItems.map(normalizeHandItem):legacyHandItems(data),rightHand:String(data?.rightHand??""),leftHand:String(data?.leftHand??""),notes:String(data?.notes??""),
   resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),equipment:[]
  };
  if(data?.resources)RESOURCES.forEach(x=>out.resources[x]=Math.max(0,Number(data.resources[x])||0));
@@ -318,13 +326,49 @@ function save(){
 
 function bindBase(){
  $("charName").value=state.name;$("sheetDate").value=state.date;
- $("rightHand").value=state.rightHand;$("leftHand").value=state.leftHand;$("notes").value=state.notes;
+ $("notes").value=state.notes;
  $("charName").oninput=e=>{state.name=e.target.value;save()};
  $("sheetDate").oninput=e=>{state.date=e.target.value;save()};
- $("rightHand").oninput=e=>{state.rightHand=e.target.value;save()};
- $("leftHand").oninput=e=>{state.leftHand=e.target.value;save()};
+
  $("notes").oninput=e=>{state.notes=e.target.value;save()};
- renderResources();renderEquipment();
+ renderResources();renderHands();renderEquipment();
+}
+
+function renderHands(){
+ const root=$("handItems");if(!root)return;root.innerHTML="";
+ if(!state.handItems.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="Nenhum item equipado. Adicione um item ou use ✋ em um item do inventário.";root.appendChild(empty);return;}
+ state.handItems.forEach(it=>{
+  const card=document.createElement("div");card.className="hand-item";
+  const main=document.createElement("div");main.className="hand-item-main";
+  const name=document.createElement("div");name.className="hand-item-name";name.textContent=it.name;
+  const meta=document.createElement("div");meta.className="hand-item-meta";meta.textContent=(it.hand||"Livre")+(it.damage?" • "+it.damage:"")+(it.quantity>1?" • Qtd. "+it.quantity:"");
+  main.append(name,meta);
+  const actions=document.createElement("div");actions.className="hand-item-actions";
+  const edit=button("✎ Editar");edit.onclick=()=>{const name=prompt("Nome do item",it.name);if(name===null)return;it.name=name.trim()||"Item";const dmg=prompt("Dano / efeito",it.damage||"");if(dmg!==null)it.damage=dmg.trim();const notes=prompt("Observações",it.notes||"");if(notes!==null)it.notes=notes.trim();save();renderHands();};
+  const hand=button("✋ Mão");hand.title="Alternar mão";hand.onclick=()=>{it.hand=it.hand==="Direita"?"Esquerda":it.hand==="Esquerda"?"Duas mãos":"Direita";save();renderHands();};
+  const store=button("🎒 Guardar");store.onclick=()=>storeHandItem(it);
+  const del=button("×","danger");del.onclick=()=>{if(confirm("Remover "+it.name+" das mãos?")){state.handItems=state.handItems.filter(x=>x.id!==it.id);save();renderHands();}};
+  actions.append(edit,hand,store,del);card.append(main,actions);root.appendChild(card);
+ });
+}
+function equipItemToHands(eq,grid,it){
+ grid.items=grid.items.filter(x=>x.id!==it.id);
+ state.handItems.push(normalizeHandItem({...it,hand:"Livre"}));selectedItem=null;save();renderHands();renderEquipment();
+}
+function storeHandItem(it){
+ const options=[];state.equipment.forEach(eq=>eq.grids.forEach(g=>options.push({eq,g,label:eq.name+" — "+g.name+" ("+g.cols+"×"+g.rows+")"})));
+ if(!options.length){alert("Crie um equipamento e uma grade primeiro.");return;}
+ const menu=options.map((o,i)=>(i+1)+". "+o.label).join("\n");const answer=prompt("Guardar em qual grade?\n"+menu);if(answer===null)return;
+ const o=options[Number(answer)-1];if(!o){alert("Número inválido.");return;}
+ const copy={...it,x:0,y:0,rot:!!it.rot};let pos=null;
+ for(let y=0;y<o.g.rows&&!pos;y++)for(let x=0;x<o.g.cols&&!pos;x++)if(fits(o.g,copy,x,y,copy.rot))pos={x,y};
+ if(!pos){alert("Não há espaço livre nessa grade. O item continua nas mãos.");return;}
+ copy.x=pos.x;copy.y=pos.y;o.g.items.push(copy);state.handItems=state.handItems.filter(x=>x.id!==it.id);save();renderHands();renderEquipment();
+}
+function addNewHandItem(){
+ const name=prompt("Nome do item equipado");if(name===null||!name.trim())return;
+ const damage=prompt("Dano / efeito (opcional)","");const notes=prompt("Observações (opcional)","");
+ state.handItems.push(normalizeHandItem({name:name.trim(),damage:damage||"",notes:notes||"",hand:"Livre",w:1,h:1}));save();renderHands();
 }
 
 function renderResources(){
@@ -562,7 +606,8 @@ function renderGrid(eq,grid){
    }
   };
 
-  tools.append(edit,rotate,duplicate,remove);
+  const equip=button("✋");equip.title="Equipar nas mãos, sem limite de tamanho";equip.setAttribute("aria-label","Equipar nas mãos");equip.onclick=e=>{e.stopPropagation();equipItemToHands(eq,grid,it);};
+  tools.append(edit,rotate,duplicate,equip,remove);
   el.appendChild(tools);
 
   el.addEventListener("click",e=>{
@@ -879,6 +924,7 @@ function createEquipmentFromMobile(){
 }
 
 $("createEqBtn").onclick = createEquipmentFromMobile;
+$("addHandItem").onclick = addNewHandItem;
 $("exportBtn").onclick=()=>{
  save();const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
  const url=URL.createObjectURL(blob),a=document.createElement("a");
@@ -894,7 +940,7 @@ $("fileInput").onchange=e=>{
 };
 $("newBtn").onclick=()=>{
  if(!confirm("Criar uma nova ficha? Exporte a ficha atual antes se quiser guardá-la."))return;
- state={version:3,name:"",date:new Date().toISOString().slice(0,10),rightHand:"",leftHand:"",notes:"",resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),equipment:[]};
+ state={version:5,name:"",date:new Date().toISOString().slice(0,10),handItems:[],rightHand:"",leftHand:"",notes:"",resources:Object.fromEntries(RESOURCES.map(x=>[x,0])),equipment:[]};
  save();bindBase();
 };
 $("modalBg").onclick=e=>{if(e.target===$("modalBg"))$("modalBg").style.display="none"};
