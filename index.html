@@ -143,7 +143,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 
 .hand-item.placing{border:2px solid var(--accent);background:#143638;box-shadow:0 0 0 2px #49d3b433}
 .hand-place-status{margin-top:9px;padding:10px;border:1px solid var(--accent);border-radius:8px;background:#0d2022;color:var(--accent);font-size:12px}
-.grid-cell.hand-place-valid{background:#28675f;border:2px solid var(--accent);box-shadow:inset 0 0 0 2px #49d3b433;position:relative}
+.grid-cell.hand-place-valid{background:#28675f;border:3px solid var(--accent);box-shadow:inset 0 0 0 2px #49d3b433;position:relative;z-index:4;cursor:pointer;touch-action:manipulation;pointer-events:auto}
 .grid-cell.hand-place-valid::after{content:attr(data-place-size);position:absolute;left:4px;top:4px;font-size:10px;font-weight:700;color:#eafffa;background:#092321cc;padding:2px 4px;border-radius:4px;pointer-events:none}
 
 </style>
@@ -689,8 +689,18 @@ function renderGrid(eq,grid){
   board.appendChild(el);
  });
 
- wrap.appendChild(board);
- section.appendChild(wrap);
+  // Mobile-safe delegated destination handler: tapping any highlighted cell stores the selected hand item.
+  board.addEventListener("click",e=>{
+   if(!selectedHandPlacementId)return;
+   const cell=e.target.closest(".grid-cell");
+   if(!cell||!board.contains(cell)||!cell.classList.contains("hand-place-valid"))return;
+   e.preventDefault();e.stopPropagation();
+   const px=Number(cell.dataset.x),py=Number(cell.dataset.y);
+   if(storeHandItemAtCell(grid,px,py))return;
+  });
+
+  wrap.appendChild(board);
+  section.appendChild(wrap);
 
  const help=document.createElement("div");
  help.className="grid-help";
@@ -701,6 +711,7 @@ function renderGrid(eq,grid){
 }
 
 function renderEquipment(){
+ if(selectedHandPlacementId&&!state.handItems.some(it=>it.id===selectedHandPlacementId))selectedHandPlacementId=null;
  const list=$("equipmentList");
  list.innerHTML="";
  if(selectedHandPlacementId){
