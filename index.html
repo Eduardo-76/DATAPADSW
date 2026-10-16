@@ -361,9 +361,15 @@ function storeHandItem(it){
  const menu=options.map((o,i)=>(i+1)+". "+o.label).join("\n");const answer=prompt("Guardar em qual grade?\n"+menu);if(answer===null)return;
  const o=options[Number(answer)-1];if(!o){alert("Número inválido.");return;}
  const copy={...it,x:0,y:0,rot:!!it.rot};let pos=null;
- for(let y=0;y<o.g.rows&&!pos;y++)for(let x=0;x<o.g.cols&&!pos;x++)if(fits(o.g,copy,x,y,copy.rot))pos={x,y};
- if(!pos){alert("Não há espaço livre nessa grade. O item continua nas mãos.");return;}
- copy.x=pos.x;copy.y=pos.y;o.g.items.push(copy);state.handItems=state.handItems.filter(x=>x.id!==it.id);save();renderHands();renderEquipment();
+ // Primeiro tenta encaixar na orientação atual, varrendo toda a grade.
+ for(let y=0;y<o.g.rows&&!pos;y++)for(let x=0;x<o.g.cols&&!pos;x++)if(fits(o.g,copy,x,y,copy.rot))pos={x,y,rot:copy.rot};
+ // Se não couber, tenta girar o item e procurar novamente em todas as posições.
+ if(!pos){
+  const alternate=!copy.rot;
+  for(let y=0;y<o.g.rows&&!pos;y++)for(let x=0;x<o.g.cols&&!pos;x++)if(fits(o.g,copy,x,y,alternate))pos={x,y,rot:alternate};
+ }
+ if(!pos){alert("Não há espaço livre suficiente nessa grade, mesmo tentando girar e procurar outra posição. O item continua nas mãos.");return;}
+ copy.x=pos.x;copy.y=pos.y;copy.rot=pos.rot;o.g.items.push(copy);state.handItems=state.handItems.filter(x=>x.id!==it.id);save();renderHands();renderEquipment();
 }
 function addNewHandItem(){
  const name=prompt("Nome do item equipado");if(name===null||!name.trim())return;
@@ -882,6 +888,9 @@ function openItemDetailsModal(eq,grid,it){
   <textarea id="detailNotes" rows="4" placeholder="Alcance, propriedades, munição, efeitos...">${escapeHtml(it.notes)}</textarea>
 
   <div class="help">O tamanho é medido em espaços da grade. Se o novo tamanho não couber na posição atual, o DataPad tentará encontrar outro lugar livre. Se não houver espaço, nada será alterado.</div>
+  <div style="display:flex;justify-content:flex-start;margin-top:12px">
+   <button type="button" id="detailDeleteItem" class="danger">🗑 Excluir este item</button>
+  </div>
  `,body=>{
   const name=body.querySelector("#detailName").value.trim()||"Item";
   const w=clampInt(body.querySelector("#detailW").value,1,99);
@@ -899,6 +908,13 @@ function openItemDetailsModal(eq,grid,it){
   if(!target){alert("Não há espaço livre suficiente nesta grade para o novo tamanho. O item não foi alterado.");return false;}
   it.name=name;it.w=w;it.h=h;it.x=target.x;it.y=target.y;it.maxStack=maxStack;it.quantity=quantity;it.damage=damage;it.notes=notes;
  });
+ const deleteButton=$("detailDeleteItem");
+ if(deleteButton)deleteButton.onclick=()=>{
+  if(!confirm("Excluir "+it.name+" permanentemente desta ficha?"))return;
+  grid.items=grid.items.filter(item=>item.id!==it.id);
+  $("modalBg").style.display="none";
+  save();renderEquipment();
+ };
 }
 
 function createEquipmentFromMobile(){
