@@ -140,6 +140,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
  .grid2{grid-template-columns:1fr}.resource-grid{grid-template-columns:1fr 1fr}
  header{align-items:flex-start;flex-direction:column}.top-actions{width:100%}
 }
+
+.hand-item.placing{border:2px solid var(--accent);background:#143638;box-shadow:0 0 0 2px #49d3b433}
+.hand-place-status{margin-top:9px;padding:10px;border:1px solid var(--accent);border-radius:8px;background:#0d2022;color:var(--accent);font-size:12px}
+.grid-cell.hand-place-valid{background:#28675f;border:2px solid var(--accent);box-shadow:inset 0 0 0 2px #49d3b433;position:relative}
+.grid-cell.hand-place-valid::after{content:attr(data-place-size);position:absolute;left:4px;top:4px;font-size:10px;font-weight:700;color:#eafffa;background:#092321cc;padding:2px 4px;border-radius:4px;pointer-events:none}
+
 </style>
 </head>
 <body>
@@ -168,6 +174,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
   <div class="section-title"><h2>✋ MÃOS</h2><button class="primary" id="addHandItem">＋ Adicionar item</button></div>
   <div class="small" style="margin-bottom:9px">Qualquer item pode ser equipado aqui, sem grade e sem limite de tamanho.</div>
   <div class="hand-items" id="handItems"></div>
+  <div class="hand-place-status" id="handPlaceStatus" hidden></div>
 </section>
 
 <section class="card">
@@ -234,6 +241,7 @@ let state={
 let draggedItem=null;
 let draggedEquipment=null;
 let selectedItem=null;
+let selectedHandPlacementId=null;
 
 function uid(){return "id_"+Math.random().toString(36).slice(2)+Date.now().toString(36)}
 function $(id){return document.getElementById(id)}
@@ -336,40 +344,61 @@ function bindBase(){
 
 function renderHands(){
  const root=$("handItems");if(!root)return;root.innerHTML="";
+ const status=$("handPlaceStatus");
+ const selected=state.handItems.find(it=>it.id===selectedHandPlacementId);
+ if(status){
+  status.hidden=!selected;
+  status.textContent=selected?`🎯 Guardando “${selected.name}” (${selected.rot?selected.h+"×"+selected.w:selected.w+"×"+selected.h}). Toque em uma célula destacada da grade. O DataPad encaixará o item ali ou procurará a posição livre mais próxima, tentando girá-lo se necessário.`:"";
+ }
  if(!state.handItems.length){const empty=document.createElement("div");empty.className="empty";empty.textContent="Nenhum item equipado. Adicione um item ou use ✋ em um item do inventário.";root.appendChild(empty);return;}
  state.handItems.forEach(it=>{
-  const card=document.createElement("div");card.className="hand-item";
+  const card=document.createElement("div");card.className="hand-item"+(it.id===selectedHandPlacementId?" placing":"");
+  card.tabIndex=0;card.setAttribute("role","button");card.setAttribute("aria-label","Selecionar "+it.name+" para guardar em uma grade");
   const main=document.createElement("div");main.className="hand-item-main";
   const name=document.createElement("div");name.className="hand-item-name";name.textContent=it.name;
-  const meta=document.createElement("div");meta.className="hand-item-meta";meta.textContent=(it.hand||"Livre")+(it.damage?" • "+it.damage:"")+(it.quantity>1?" • Qtd. "+it.quantity:"");
+  const meta=document.createElement("div");meta.className="hand-item-meta";meta.textContent=(it.hand||"Livre")+" • "+(it.rot?it.h+"×"+it.w:it.w+"×"+it.h)+(it.damage?" • "+it.damage:"")+(it.quantity>1?" • Qtd. "+it.quantity:"");
   main.append(name,meta);
   const actions=document.createElement("div");actions.className="hand-item-actions";
-  const edit=button("✎ Editar");edit.onclick=()=>{const name=prompt("Nome do item",it.name);if(name===null)return;it.name=name.trim()||"Item";const dmg=prompt("Dano / efeito",it.damage||"");if(dmg!==null)it.damage=dmg.trim();const notes=prompt("Observações",it.notes||"");if(notes!==null)it.notes=notes.trim();save();renderHands();};
-  const hand=button("✋ Mão");hand.title="Alternar mão";hand.onclick=()=>{it.hand=it.hand==="Direita"?"Esquerda":it.hand==="Esquerda"?"Duas mãos":"Direita";save();renderHands();};
-  const store=button("🎒 Guardar");store.onclick=()=>storeHandItem(it);
-  const del=button("×","danger");del.onclick=()=>{if(confirm("Remover "+it.name+" das mãos?")){state.handItems=state.handItems.filter(x=>x.id!==it.id);save();renderHands();}};
-  actions.append(edit,hand,store,del);card.append(main,actions);root.appendChild(card);
+  const edit=button("✎ Editar");edit.onclick=e=>{e.stopPropagation();const name=prompt("Nome do item",it.name);if(name===null)return;it.name=name.trim()||"Item";const dmg=prompt("Dano / efeito",it.damage||"");if(dmg!==null)it.damage=dmg.trim();const notes=prompt("Observações",it.notes||"");if(notes!==null)it.notes=notes.trim();save();renderHands();};
+  const hand=button("✋ Mão");hand.title="Alternar mão";hand.onclick=e=>{e.stopPropagation();it.hand=it.hand==="Direita"?"Esquerda":it.hand==="Esquerda"?"Duas mãos":"Direita";save();renderHands();};
+  const store=button(it.id===selectedHandPlacementId?"Cancelar destino":"🎒 Escolher destino");store.className=it.id===selectedHandPlacementId?"danger":"primary";store.onclick=e=>{e.stopPropagation();selectedHandPlacementId=selectedHandPlacementId===it.id?null:it.id;renderHands();renderEquipment();};
+  const del=button("×","danger");del.onclick=e=>{e.stopPropagation();if(confirm("Remover "+it.name+" das mãos?")){state.handItems=state.handItems.filter(x=>x.id!==it.id);if(selectedHandPlacementId===it.id)selectedHandPlacementId=null;save();renderHands();renderEquipment();}};
+  actions.append(edit,hand,store,del);card.append(main,actions);
+  card.addEventListener("click",()=>{selectedHandPlacementId=selectedHandPlacementId===it.id?null:it.id;renderHands();renderEquipment();});
+  card.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();selectedHandPlacementId=selectedHandPlacementId===it.id?null:it.id;renderHands();renderEquipment();}});
+  root.appendChild(card);
  });
 }
 function equipItemToHands(eq,grid,it){
  grid.items=grid.items.filter(x=>x.id!==it.id);
  state.handItems.push(normalizeHandItem({...it,hand:"Livre"}));selectedItem=null;save();renderHands();renderEquipment();
 }
-function storeHandItem(it){
- const options=[];state.equipment.forEach(eq=>eq.grids.forEach(g=>options.push({eq,g,label:eq.name+" — "+g.name+" ("+g.cols+"×"+g.rows+")"})));
- if(!options.length){alert("Crie um equipamento e uma grade primeiro.");return;}
- const menu=options.map((o,i)=>(i+1)+". "+o.label).join("\n");const answer=prompt("Guardar em qual grade?\n"+menu);if(answer===null)return;
- const o=options[Number(answer)-1];if(!o){alert("Número inválido.");return;}
- const copy={...it,x:0,y:0,rot:!!it.rot};let pos=null;
- // Primeiro tenta encaixar na orientação atual, varrendo toda a grade.
- for(let y=0;y<o.g.rows&&!pos;y++)for(let x=0;x<o.g.cols&&!pos;x++)if(fits(o.g,copy,x,y,copy.rot))pos={x,y,rot:copy.rot};
- // Se não couber, tenta girar o item e procurar novamente em todas as posições.
- if(!pos){
-  const alternate=!copy.rot;
-  for(let y=0;y<o.g.rows&&!pos;y++)for(let x=0;x<o.g.cols&&!pos;x++)if(fits(o.g,copy,x,y,alternate))pos={x,y,rot:alternate};
+function findHandPlacement(grid,it,anchorX=null,anchorY=null){
+ const orientations=[!!it.rot,!it.rot];
+ const candidates=[];
+ for(const rot of orientations){
+  const candidate={...it,rot};
+  for(let y=0;y<grid.rows;y++)for(let x=0;x<grid.cols;x++){
+   if(!fits(grid,candidate,x,y,rot))continue;
+   const distance=anchorX===null?y*grid.cols+x:Math.abs(x-anchorX)+Math.abs(y-anchorY);
+   candidates.push({x,y,rot,distance,anchor:(x===anchorX&&y===anchorY)});
+  }
  }
- if(!pos){alert("Não há espaço livre suficiente nessa grade, mesmo tentando girar e procurar outra posição. O item continua nas mãos.");return;}
- copy.x=pos.x;copy.y=pos.y;copy.rot=pos.rot;o.g.items.push(copy);state.handItems=state.handItems.filter(x=>x.id!==it.id);save();renderHands();renderEquipment();
+ candidates.sort((a,b)=>Number(b.anchor)-Number(a.anchor)||a.distance-b.distance||a.y-b.y||a.x-b.x);
+ return candidates[0]||null;
+}
+function storeHandItemAtCell(grid,x,y){
+ const it=state.handItems.find(item=>item.id===selectedHandPlacementId);
+ if(!it)return false;
+ const pos=findHandPlacement(grid,it,x,y);
+ if(!pos){alert("Não há espaço livre para esse item nesta grade. Escolha outra área destacada ou outra grade.");return false;}
+ const copy={...it,x:pos.x,y:pos.y,rot:pos.rot};
+ grid.items.push(copy);
+ state.handItems=state.handItems.filter(item=>item.id!==it.id);
+ selectedHandPlacementId=null;save();renderHands();renderEquipment();return true;
+}
+function storeHandItem(it){
+ selectedHandPlacementId=it.id;renderHands();renderEquipment();
 }
 function addNewHandItem(){
  const name=prompt("Nome do item equipado");if(name===null||!name.trim())return;
@@ -475,6 +504,15 @@ function renderGrid(eq,grid){
   const cell=document.createElement("div");
   cell.className="grid-cell";
   cell.dataset.x=x;cell.dataset.y=y;
+  if(selectedHandPlacementId){
+   const handItem=state.handItems.find(it=>it.id===selectedHandPlacementId);
+   if(handItem){
+    const pos=findHandPlacement(grid,handItem,x,y);
+    const exactCurrent=fits(grid,{...handItem,rot:!!handItem.rot},x,y,!!handItem.rot);
+    const exactRotated=fits(grid,{...handItem,rot:!handItem.rot},x,y,!handItem.rot);
+    if(exactCurrent||exactRotated){cell.classList.add("hand-place-valid");cell.dataset.placeSize=(handItem.rot?handItem.h+"×"+handItem.w:handItem.w+"×"+handItem.h)+(exactRotated&&!exactCurrent?" ↻":"");}
+   }
+  }
 
   cell.addEventListener("dragover",e=>{
    e.preventDefault();cell.classList.add("over");
@@ -520,6 +558,14 @@ function renderGrid(eq,grid){
 
   // Mobile fallback: tap an item to select it, then tap a destination cell.
   cell.addEventListener("click",e=>{
+   if(selectedHandPlacementId){
+    const handItem=state.handItems.find(it=>it.id===selectedHandPlacementId);
+    if(handItem){
+     const valid=fits(grid,{...handItem,rot:!!handItem.rot},x,y,!!handItem.rot)||fits(grid,{...handItem,rot:!handItem.rot},x,y,!handItem.rot);
+     if(valid){storeHandItemAtCell(grid,x,y);return;}
+    }
+    return;
+   }
    if(!selectedItem)return;
    const sourceGrid=state.equipment.flatMap(e=>e.grids).find(g=>g.id===selectedItem.gridId);
    if(!sourceGrid)return;
@@ -657,6 +703,10 @@ function renderGrid(eq,grid){
 function renderEquipment(){
  const list=$("equipmentList");
  list.innerHTML="";
+ if(selectedHandPlacementId){
+  const handItem=state.handItems.find(it=>it.id===selectedHandPlacementId);
+  if(handItem){const tip=document.createElement("div");tip.className="hand-place-status";tip.textContent=`Escolha uma célula destacada para guardar “${handItem.name}” (${handItem.rot?handItem.h+"×"+handItem.w:handItem.w+"×"+handItem.h}). Cada célula destacada é uma posição inicial válida; o item ocupa o tamanho completo e pode ser girado automaticamente.`;list.appendChild(tip);}
+ }
 
  if(!state.equipment.length){
   list.innerHTML='<div class="empty">Nenhum equipamento. Clique em “＋ Novo equipamento”.</div>';
