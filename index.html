@@ -17,6 +17,28 @@ button{cursor:pointer;min-height:36px;border:1px solid var(--border);background:
 button:hover{border-color:var(--accent)}
 button.primary{background:var(--accent);color:#06201b;border-color:var(--accent);font-weight:700}
 button.danger{color:#ffdede;border-color:#7c4141}
+.projects-link{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:36px;
+  border:1px solid var(--accent);
+  background:var(--panel2);
+  color:var(--accent);
+  padding:8px 11px;
+  border-radius:8px;
+  text-decoration:none;
+  font-weight:700;
+}
+.projects-link:hover{
+  background:#204b48;
+}
+@media(max-width:700px){
+  .projects-link{
+    min-height:42px;
+    flex:1;
+  }
+}
 .app{max-width:1120px;margin:auto;padding:18px}
 header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:14px}
 h1{margin:0;color:var(--accent);font-size:25px}
@@ -160,8 +182,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent)}
     <button class="primary" id="exportBtn">📤 Exportar</button>
     <button id="importBtn">📥 Importar</button>
     <button id="newBtn">🆕 Nova ficha</button>
-  </div>
-</header>
+    <a class="projects-link" href="./projetos.html">🛠️ Projetos</a>
+</div></header>
 
 <section class="card">
   <div class="grid2">

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataPad — Projetos</title>
+<style>
+:root{
+  --bg:#071316;--panel:#0d2024;--panel2:#10282d;--line:#23444a;
+  --text:#e0eeee;--muted:#9ab5b8;--accent:#79d6cf;--accent2:#d5b77a;
+  --danger:#e58b83;--radius:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top,#143137 0%,var(--bg) 62%);color:var(--text);font:15px/1.55 "Segoe UI",Arial,sans-serif;min-height:100vh}
+.app{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+aside{background:rgba(5,17,20,.88);border-right:1px solid var(--line);padding:22px 14px}
+.brand{font-weight:800;letter-spacing:2px;color:var(--accent);font-size:18px;padding:5px 10px 20px}
+.tree-label{font-size:11px;text-transform:uppercase;letter-spacing:1.6px;color:#688b90;padding:12px 10px 7px}
+.navbtn{width:100%;display:flex;gap:10px;align-items:center;text-align:left;background:transparent;border:0;color:var(--muted);padding:11px 12px;border-radius:9px;cursor:pointer;font:inherit}
+.navbtn:hover,.navbtn.active{background:var(--panel2);color:var(--text)}
+.navbtn.active{box-shadow:inset 3px 0 var(--accent)}
+.sub{padding-left:26px;font-size:14px}
+main{padding:clamp(20px,4vw,48px);max-width:1120px;width:100%;margin:0 auto}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:28px}
+.eyebrow{color:var(--accent);font-size:12px;letter-spacing:2px;text-transform:uppercase}
+h1{font-size:clamp(26px,4vw,38px);margin:4px 0 0;line-height:1.2}
+.intro{color:var(--muted);max-width:720px;margin:0 0 26px}
+.pill{border:1px solid var(--line);border-radius:999px;padding:6px 11px;color:var(--accent);font-size:12px;white-space:nowrap}
+.section{display:none;scroll-margin-top:130px}.section.active{display:block}#overview{display:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px}
+.item{background:linear-gradient(145deg,rgba(16,40,45,.96),rgba(9,25,29,.96));border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:0 12px 30px #0002}
+.item.wide{grid-column:1/-1}
+.item h2{font-size:20px;margin:0 0 13px}
+.category-heading{font-size:24px;margin:30px 0 10px;padding:0 0 12px;border-bottom:1px solid var(--line);scroll-margin-top:130px}
+.navbtn{text-decoration:none}
+.navbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.item h3{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--accent);margin:20px 0 8px}
+.item p{margin:7px 0}.muted{color:var(--muted)}.cost{color:var(--accent2)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:15px 0}
+.stat{padding:10px;background:#07191c;border:1px solid #1c3a3f;border-radius:8px}
+.stat small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px}
+.stat strong{display:block;margin-top:3px}
+table{border-collapse:collapse;width:100%;margin:8px 0 12px}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);background:#091b1f}
+tr:last-child td{border-bottom:0}
+ul{padding-left:20px;margin:8px 0}li{margin:5px 0}
+.note{border-left:3px solid var(--accent2);padding:10px 13px;background:#2b271b55;border-radius:0 8px 8px 0;color:#e5d8b9;margin-top:14px}
+.requirement{display:inline-block;border:1px solid #5b4930;color:var(--accent2);padding:3px 8px;border-radius:6px;font-size:12px;margin-top:6px}
+.back-link{display:inline-flex;align-items:center;justify-content:center;min-height:42px;margin:0 0 18px;padding:9px 13px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--accent);text-decoration:none;font-weight:700}\n.back-link:hover{border-color:var(--accent)}\n.footer{margin-top:28px;border-top:1px solid var(--line);padding-top:14px;color:#719195;font-size:12px}
+@media(max-width:700px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  aside{position:sticky;top:0;z-index:5;border-right:0;border-bottom:1px solid var(--line);padding:10px 12px;background:rgba(5,17,20,.97);backdrop-filter:blur(12px)}
+  .brand{padding:3px 8px 8px;font-size:16px}
+  .tree-label{display:none}
+  aside>.navbtn{display:none}
+  .navrow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .navbtn{position:relative;z-index:6;display:flex;width:100%;min-height:48px;justify-content:center;padding:10px 8px;font-size:13px;line-height:1.25;border:1px solid transparent;touch-action:manipulation;pointer-events:auto;-webkit-tap-highlight-color:rgba(121,214,207,.2)}
+  .navbtn.active{border-color:#315b60;box-shadow:inset 0 -2px var(--accent)}
+  .sub{padding-left:8px}
+  main{padding:18px 12px 28px;min-width:0}
+  .topline{align-items:flex-start;margin-bottom:20px;padding-bottom:14px;gap:10px}
+  .topline .pill{font-size:10px;padding:5px 8px}
+  h1{font-size:27px}
+  .category-heading{font-size:21px;margin-top:22px}
+  .intro{font-size:14px;margin-bottom:18px}
+  .grid{grid-template-columns:minmax(0,1fr);gap:12px}
+  .item,.item.wide{grid-column:auto;min-width:0;padding:16px;border-radius:11px}
+  .item h2{font-size:18px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .stat{padding:9px;min-width:0;overflow-wrap:anywhere}
+  .stat strong{font-size:14px}
+  table{font-size:13px;table-layout:fixed}
+  th,td{padding:9px 8px;overflow-wrap:anywhere}
+  .note{font-size:13px;padding:10px}
+  ul{padding-left:18px}
+  .footer{font-size:11px}
+}
+@media(max-width:380px){
+  main{padding-left:9px;padding-right:9px}
+  .item,.item.wide{padding:13px}
+  h1{font-size:24px}
+  .eyebrow{font-size:10px;letter-spacing:1.3px}
+  .navbtn{font-size:12px;gap:5px}
+  .topline .pill{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <div class="brand">◈ DATAPAD</div>
+  <div class="tree-label">Biblioteca</div>
+  <div class="tree-label">Projetos</div>
+  <div class="navrow">
+    <a class="navbtn sub active" href="#weapons">▤ &nbsp; Projetos Armas</a>
+    <a class="navbtn sub" href="#clothes">▤ &nbsp; Projetos Roupas</a>
+  </div>
+</aside>
+<main>
+  <a class="back-link" href="./index.html">← Voltar ao Inventário</a>
+  <div class="topline">
+    <div><div class="eyebrow">Arquivo de fabricação • Registro de campanha</div><h1 id="pageTitle">Projetos de Fabricação</h1></div>
+    <span class="pill">DATA •PAD / REGISTRO</span>
+  </div>
+
+  <section id="overview" class="section">
+    <p class="intro">Arquivo de projetos e equipamentos improvisados. Selecione uma categoria no menu para consultar materiais, características e regras de fabricação.</p>
+    <div class="item">
+      <h2>📁 Projetos disponíveis</h2>
+      <p>🔪 <strong>Projetos Armas</strong> — armas improvisadas, requisitos, dano, alcance e fabricação.</p>
+      <p>🧷 <strong>Projetos Roupas</strong> — equipamentos de transporte, coldres, bandoleiras e bolsas.</p>
+      <p class="muted">Este DataPad reúne as informações atuais. Novos projetos e materiais poderão ser adicionados conforme forem encontrados durante a campanha.</p>
+    </div>
+  </section>
+
+  <section id="weapons" class="section active">
+    <h2 class="category-heading">🔫 Projetos Armas</h2>
+    <p class="intro">Projetos de armas e ferramentas improvisadas. Os resultados de fabricação determinam a durabilidade ou a condição do item, conforme indicado em cada projeto.</p>
+    <div class="grid">
+      <article class="item">
+        <h2>🔪 Faca de Sucata</h2>
+        <p><strong>Categoria:</strong> Arma improvisada — Ilegal</p>
+        <p class="cost"><strong>Custo:</strong> 2× Sucata</p>
+        <div class="stats">
+          <div class="stat"><small>Tamanho</small><strong>1 Slot</strong></div>
+          <div class="stat"><small>Dano</small><strong>2d6 + 2</strong></div>
+          <div class="stat"><small>Tipo</small><strong>Cortante</strong></div>
+          <div class="stat"><small>Alcance</small><strong>1 bloco</strong></div>
+        </div>
+        <h3>Fabricação · Role 1d20</h3>
+        <table><thead><tr><th>Resultado</th><th>Qualidade</th></tr></thead><tbody>
+          <tr><td>1–7</td><td>Uso único</td></tr><tr><td>8–16</td><td>Dura 2 combates</td></tr><tr><td>17–20</td><td>Dura 4 combates</td></tr>
+        </tbody></table>
+        <div class="note">Pode ser utilizada em um ataque furtivo/assassinato quando as condições permitirem.</div>
+      </article>
+
+      <article class="item">
+        <h2>🪓 Bastão de Sucata</h2>
+        <p><strong>Categoria:</strong> Arma improvisada</p>
+        <p class="cost"><strong>Custo:</strong> 4× Sucata</p>
+        <div class="stats">
+          <div class="stat"><small>Tamanho</small><strong>2 Slots</strong></div>
+          <div class="stat"><small>Dano</small><strong>3d4 + 2</strong></div>
+          <div class="stat"><small>Tipo</small><strong>Contundente</strong></div>
+          <div class="stat"><small>Alcance</small><strong>2 blocos</strong></div>
+        </div>
+        <h3>Fabricação · Role 1d20</h3>
+        <table><thead><tr><th>Resultado</th><th>Qualidade</th></tr></thead><tbody>
+          <tr><td>1–7</td><td>Uso único</td></tr><tr><td>8–16</td><td>Dura 2 combates</td></tr><tr><td>17–20</td><td>Dura 4 combates</td></tr>
+        </tbody></table>
+      </article>
+
+      <article class="item">
+        <h2>🪝 Gancho de Sucata</h2>
+        <p><strong>Categoria:</strong> Ferramenta / Arma improvisada</p>
+        <p class="cost"><strong>Custo:</strong> 3× Sucata + 1× Cabo de Aço</p>
+        <div class="stats">
+          <div class="stat"><small>Tamanho</small><strong>1 Slot</strong></div>
+          <div class="stat"><small>Alcance</small><strong>25 metros</strong></div>
+        </div>
+        <h3>Fabricação · Role 1d20</h3>
+        <table><thead><tr><th>Resultado</th><th>Qualidade</th></tr></thead><tbody>
+          <tr><td>1–7</td><td>1 uso</td></tr><tr><td>8–16</td><td>2 usos</td></tr><tr><td>17–20</td><td>4 usos</td></tr>
+        </tbody></table>
+        <h3>Utilidades</h3>
+        <ul><li>Alcançar locais elevados;</li><li>Prender-se a estruturas;</li><li>Puxar objetos;</li><li>Amarrar alguém;</li><li>Tentar desarmar um inimigo;</li><li>Criar improvisações durante exploração.</li></ul>
+        <div class="note">Ações especiais dependem de um teste apropriado.</div>
+      </article>
+
+      <article class="item wide">
+        <h2>🔫 Blaster de Sucata</h2>
+        <p><strong>Categoria:</strong> Arma de fogo improvisada — Ilegal</p>
+        <p class="cost"><strong>Custo:</strong> 5× Sucata + 2× Cabo de Energia + 1× Célula de Energia</p>
+        <span class="requirement">Requisito: Mecânica 12</span>
+        <div class="stats">
+          <div class="stat"><small>Tamanho</small><strong>2 Slots</strong></div>
+          <div class="stat"><small>Dano</small><strong>3d6 + 3</strong></div>
+          <div class="stat"><small>Alcance</small><strong>12 blocos</strong></div>
+        </div>
+        <h3>Fabricação · Role 1d20</h3>
+        <table><thead><tr><th>Resultado</th><th>Qualidade</th></tr></thead><tbody>
+          <tr><td>1–7</td><td>Instável</td></tr><tr><td>8–16</td><td>Funcional</td></tr><tr><td>17–20</td><td>Boa condição</td></tr>
+        </tbody></table>
+        <h3>🔧 Instável — resultado 1–7</h3>
+        <p>A arma funciona, mas possui alto risco de falha. Após <strong>cada disparo</strong>, o Mestre rola <strong>1d20</strong>:</p>
+        <ul><li><strong>1–11:</strong> a arma falha;</li><li><strong>12–20:</strong> a arma funciona normalmente.</li></ul>
+        <p>Quando falhar, o usuário precisa gastar <strong>1 Ação Rápida</strong> para realizar um reparo emergencial.</p>
+        <h3>⚡ Funcional — resultado 8–16</h3>
+        <p>A arma funciona normalmente. Após <strong>2 combates</strong>, é necessário substituir a <strong>Célula de Energia</strong>.</p>
+        <h3>🟢 Boa condição — resultado 17–20</h3>
+        <p>A arma está em boas condições e funciona normalmente.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="clothes" class="section">
+    <h2 class="category-heading">🧥 Projetos Roupas</h2>
+    <p class="intro">Projetos de vestuário e acessórios improvisados para carregar itens e armas durante a aventura.</p>
+    <div class="grid">
+      <article class="item">
+        <h2>🧷 Cinto Improvisado</h2>
+        <h3>Custo</h3><ul><li>2× Sucata</li><li>2× Couro</li></ul>
+        <h3>Capacidade</h3><ul><li>2× Slot de Tamanho 1</li><li>2× Slot de Tamanho 2</li></ul>
+      </article>
+      <article class="item">
+        <h2>🔫 Coldre Improvisado</h2>
+        <h3>Custo</h3><ul><li>2× Sucata</li><li>2× Couro</li></ul>
+        <h3>Capacidade</h3><ul><li>1× Slot de Tamanho 2</li></ul>
+        <p><strong>Uso:</strong> permite carregar uma arma compatível no corpo, mantendo-a acessível.</p>
+      </article>
+      <article class="item">
+        <h2>🎒 Bandoleira</h2>
+        <h3>Custo</h3><ul><li>1× Sucata</li><li>2× Couro</li></ul>
+        <h3>Capacidade</h3><ul><li><strong>1 espaço de 4×1 Slots</strong></li><li>Permite transportar uma arma grande nas costas, desde que ela caiba nesse espaço.</li></ul>
+        <div class="note">A arma precisa ser classificada como <strong>Arma Grande</strong> e ocupar um espaço compatível de até 4×1.</div>
+      </article>
+      <article class="item">
+        <h2>🎒 Bolsa Improvisada</h2>
+        <h3>Custo</h3><ul><li>3× Sucata</li><li>3× Couro</li><li>1× Cabo de Aço</li></ul>
+        <h3>Capacidade</h3><ul><li>3× Slot de Tamanho 1×1</li><li>2× Slot de Tamanho 2×1</li><li>1× Slot de Tamanho 3×3</li></ul>
+      </article>
+    </div>
+  </section>
+  <div class="footer">DATAPAD // Projetos de fabricação • Documento informativo da campanha</div>
+</main>
+</div>
+
+
+<script>
+(() => {
+  const links = document.querySelectorAll('.navrow .navbtn');
+  const sections = document.querySelectorAll('main > .section');
+
+  function showSection(targetId, updateHash = true) {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    sections.forEach(section => section.classList.toggle('active', section.id === targetId));
+    links.forEach(link => {
+      const active = link.getAttribute('href') === '#' + targetId;
+      link.classList.toggle('active', active);
+      if (active) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+    });
+    if (updateHash) history.replaceState(null, '', '#' + targetId);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  links.forEach(link => {
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      showSection(link.getAttribute('href').slice(1));
+    });
+  });
+
+  const initial = location.hash.slice(1);
+  if (initial === 'clothes' || initial === 'weapons') showSection(initial, false);
+  else showSection('weapons', false);
+})();
+</script>
+
+</body>
+</html>
